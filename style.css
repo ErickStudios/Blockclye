@@ -1,0 +1,123 @@
+* {
+  margin: 0; padding: 0;
+  box-sizing: border-box;
+  font-family: "Segoe UI", sans-serif;
+}
+body {
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  overflow: hidden; 
+  touch-action: none;
+
+}
+#editorContainer {
+  width: 100%;
+  height: 100vh;
+  display: none;
+}
+#editorLayout {
+  display: flex;
+  width: 100vw;
+  height: calc(100vh - 52px); /* mismo alto que ya usabas */
+}
+
+#game {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: #222223;
+}
+
+#workspace {
+  width: 250px;
+  background: #1b1b1c;
+  border-left: 1px solid #333;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+/* items del workspace */
+.workspace-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.workspace-item:hover {
+  background: #2a2d2e;
+}
+
+.workspace-item.selected {
+  background: #094771;
+}
+
+.workspace-item img {
+  width: 14px;
+  height: 14px;
+}
+p {
+    color: #d4d4d4;
+}
+#ui {
+  width: calc(100%);
+  background: #252526;
+  padding: 10px;
+  display: flex;
+  gap: 8px;
+}
+.panel {
+  background: #29292A;
+}
+.panel p {
+  margin-top: 1em;
+  margin-bottom: 1em;
+  margin: 0px;
+  padding-bottom: 0px;
+}
+img {
+  padding-bottom: 1px;
+}
+button {
+  background: #3c3c3c;
+  border: none;
+  padding: 2px;
+  padding-left: 5px;
+  padding-right: 5px;
+  padding-top: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: 0.15s;
+}
+button:hover {
+  background: #505050;
+}
+button:active {
+  background: #007acc;
+}
+button img {
+  width: 13px;
+  height: 13px;
+  padding-bottom: 0px;
+}
+button p {
+  font-size: 10px;
+  padding-top: 0px;
+}
+.sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 50px;
+  height: 100%;
+  background: #333333;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 10px;
+  gap: 10px;
+}
