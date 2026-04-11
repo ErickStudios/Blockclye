@@ -353,6 +353,7 @@ wss.on("connection", (ws) => {
     ws.on("close", () => {
         console.log("🔴 Player disconnected");
         delete world.serverOrLocalService.mapServerModelsService[id];
+        world.serverOrLocalService.mapServerModelsService.splice(id, 1);
     });
 });
 

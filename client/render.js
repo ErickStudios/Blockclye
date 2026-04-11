@@ -72,7 +72,7 @@ export function syncWorld() {
 
         if (!mesh) {
             const geo = new THREE.BoxGeometry(1, 2, 1);
-            const mat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+            const mat = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
             mesh = new THREE.Mesh(geo, mat);
 
             scene.add(mesh);
