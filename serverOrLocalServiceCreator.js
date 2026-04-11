@@ -3,8 +3,6 @@ const { exportLibrary, parse, run, tokenize } = require("./core/mapIndividualSer
 const { argv } = require("process")
 const WebSocket = require("ws");
 const fs = require("fs");
-const { spawn } = require("child_process");
-const os = require("os");
 
 let env;
 let sharedLibrary;
@@ -252,11 +250,12 @@ function createWorldSnapshot(world) {
     };
 }
 
-const wss = new WebSocket.Server({ port: 8080, host: "0.0.0.0" });
+const wss = new WebSocket.Server({ 
+    port: 8080,
+    host: "0.0.0.0"
+});
 
-const ip = getLocalIP();
-
-console.log(`🚀 Server running on ws://${ip}:8080`);
+console.log("🚀 Server running on ws://" + getLocalIP() + ":8080");
 
 // estado del mundo
 let world = {
@@ -276,7 +275,7 @@ wss.on("connection", (ws) => {
     let p = new mapServerModel();
     p.basePosition = [0,0,0];
     p.baseSize = [1,2,1];
-    p.color = [0.7,0.5,1];
+    p.color = [Math.random(),Math.random(),Math.random()];
     world.serverOrLocalService.mapServerModelsService.push(p);
     ws.playerId = id;
 
@@ -353,7 +352,7 @@ wss.on("connection", (ws) => {
 
     ws.on("close", () => {
         console.log("🔴 Player disconnected");
-        world.serverOrLocalService.mapServerModelsService.splice(id, 1);
+        delete world.serverOrLocalService.mapServerModelsService[id];
     });
 });
 

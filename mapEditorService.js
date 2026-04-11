@@ -185,6 +185,30 @@ window.startApp = () => {
                     menu.style.border = "1px solid #444";
                     menu.style.borderRadius = "6px";
 
+                    if (parentNode.type == "group") {
+                        if (node.name == "scenePtr") {
+                            const exportSubScene = document.createElement("div"); exportSubScene.textContent = "ExportSubScene";
+                            exportSubScene.onclick = () => {
+                                const data = JSON.stringify(node.refScene);
+
+                                const blob = new Blob(
+                                    [data],
+                                    { type: "application/json" }
+                                );
+
+                                const url = URL.createObjectURL(blob);
+
+                                const a = document.createElement("a");
+                                a.href = url;
+                                a.download = "map.json";
+                                a.click();
+
+                                URL.revokeObjectURL(url);
+                            }
+                            menu.appendChild(exportSubScene);
+                        }
+                    }
+
                     const changeValue = document.createElement("div"); changeValue.textContent = "ChangeValue";
                     changeValue.onclick = () => {
                         
@@ -380,7 +404,6 @@ window.startApp = () => {
             modeladd();
             menu.remove();
         };
-
 
         const addGroup = document.createElement("div");
         addGroup.textContent = "New Group";
@@ -584,7 +607,22 @@ window.startApp = () => {
     };
     // [SERVER/LOCAL] Duplicates A Part To 'mapServerModelsService'
     mapServerModelsServiceTools.DuplicatePart.onclick = () => {
-        mapServerModelsServiceTools.AddPart.click();
+        let modeladd = () => {
+            workspaceHierarchy.push({
+                type: "part",
+                name: "SimpleBlk",
+                ref: serverOrLocalServiceEnv.mapServerModelsService.length - 1
+            });
+
+            renderWorkspace(workspaceHierarchy, workspace);
+        }
+        let ModelAdd = new mapServerModel();
+        ModelAdd.basePosition = [camera.position.x, camera.position.y - 2, camera.position.z - 2];
+        ModelAdd.color = [0, 1, 0];
+        serverOrLocalServiceEnv.mapServerModelsService.push(ModelAdd);
+
+        modeladd();
+
         let part = serverOrLocalServiceEnv.mapServerModelsService.length - 1;
         Object.assign(serverOrLocalServiceEnv.mapServerModelsService[part], serverOrLocalServiceEnv.mapServerModelsService[selectedModelIndex]);
         renderWorkspace(workspaceHierarchy, workspace);
@@ -763,6 +801,9 @@ window.startApp = () => {
     const light = new THREE.DirectionalLight(0xffffff, 1);
     light.position.set(5, 10, 5);
     scene.add(light);
+    const light2 = new THREE.DirectionalLight(0xffffff, 1);
+    light2.position.set(-5, -10, -5);
+    scene.add(light2);
     let createMeshesForModels = (models, scene) => {
         models.forEach(model => {
             const geometry = new THREE.BoxGeometry(...model.baseSize);

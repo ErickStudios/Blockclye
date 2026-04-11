@@ -51,6 +51,13 @@ export function initRender() {
     scene.background = skybox;
 
     document.body.appendChild(renderer.domElement);
+
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    light.position.set(5, 10, 5);
+    const light2 = new THREE.DirectionalLight(0xffffff, 1);
+    light2.position.set(-5, -10, -5);
+    scene.add(light);
+    scene.add(light2);
 }
 
 export function syncWorld() {
@@ -89,7 +96,7 @@ export function syncWorld() {
                 m.baseSize[2]
             );
 
-            const mat = new THREE.MeshBasicMaterial({
+            const mat = new THREE.MeshStandardMaterial({
                 color: new THREE.Color(
                     m.color[0],
                     m.color[1],
