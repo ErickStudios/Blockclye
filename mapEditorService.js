@@ -1,7 +1,7 @@
 /** [GLOBAL] Global Importations */
 import { AppLib } from "./lib/app.js"
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js";
-import { serverOrLocalService, mapServerModel, mapServerModelsService } from "./core/serverOrLocalService.js"
+import { serverOrLocalService, mapServerModel } from "./core/serverOrLocalService.js"
 /** [GLOBAL] Fundamental Variables */
 const canvas = document.getElementById("game");
 /** [FUNCTION] Starts The Application */
@@ -79,9 +79,15 @@ window.startApp = () => {
         yaw -= e.movementX * sensitivity;
         pitch -= e.movementY * sensitivity;
 
-        pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
+        const dir = new THREE.Vector3(
+            Math.cos(pitch) * Math.sin(yaw),
+            Math.sin(pitch),
+            Math.cos(pitch) * Math.cos(yaw)
+        );
 
-        camera.rotation.set(pitch, yaw, 0);
+        camera.lookAt(
+            camera.position.clone().add(dir)
+        );
     });
     document.addEventListener("mouseup", (e) => {
         if (e.button === 2) {
@@ -460,12 +466,20 @@ window.startApp = () => {
                 inherit: true,
                 rules: [
                     { token: 'keyword', foreground: '#e36e82' },
-                    { token: 'type.builtin', foreground: '#78d4ba'},
-                    { token: 'keyword.control', foreground: 'C586C0'},
-                    { token: 'types.classes', foreground: '#c0ecd9'},
-                    { token: 'types.variables', foreground: '#95c0d4'},
-                    { token: 'function', foreground: '#6de7e3' },
-                    { token: 'number', foreground: '#8886e3' },
+                    { token: 'keyword.control', foreground: '#C586C0'},
+                    { token: 'entity.scene', foreground: '#c0ecd9'},
+                    { token: 'entity.scene.prefactory', foreground: '#c0ecd9'},
+                    { token: 'entity.scene.factory', foreground: '#c0ecd9'},
+                    { token: 'entity.scene.element', foreground: '#c0ecd9'},
+                    { token: 'entity.class', foreground: '#c0ecd9'},
+                    { token: 'entity.class.lang', foreground: '#c0ecd9'},
+                    { token: 'entity.class.user', foreground: '#c0ecd9'},
+                    { token: 'entity.class.builtin', foreground: '#87d6bf'},
+                    { token: 'entity.variables.user', foreground: '#95c0d4'},
+                    { token: 'entity.functions', foreground: '#6de7e3' },
+                    { token: 'entity.flat', foreground: '#8886e3' },
+                    { token: 'entity.flat.number', foreground: '#8886e3' },
+                    { token: 'entity.flat.string', foreground: '#e3b986' },
                     { token: 'comment', foreground: '#9e9e9e' },
                 ],
                 colors: {
@@ -484,42 +498,52 @@ window.startApp = () => {
             let updateSyntaxHighlight = /** @param {string} code */ (code) => {
                 let vars = [...code.matchAll(/\bclass\s+(\w+)/g)].map(v => v[1]);
                 let objects = [...code.matchAll(/\bvar\b\s+(\w+)\s+=\s+ServerToInit.virtualWorkspace.importScene\(/g)].map(v => v[1]);
+                let objectsInstancied = [...code.matchAll(/\bvar\b\s+(\w+)\s+=\s+ServerToInit.virtualWorkspace.addChild\(/g)].map(v => v[1]);
                 let instancies = [];
                 if (objects.length > 0) {
                     let matches = [...code.matchAll(
                         new RegExp(`\\bvar\\b\\s+(\\w+)\\s+=\\s+(${objects.join("|")})\\.instantiate\\(`, 'g')
                     )].map(v => v[1]);
-
+                    
                     let unique = [...new Set(matches)];
                     let safeObjects = matches.map(o =>
                         o.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
                     );
                     let objectGroup = `\\b(${safeObjects.join("|")})\\b`;
-                    if (matches.length > 0) instancies = [[objectGroup, "types.classes"]];
-                    console.log(instancies);
+                    if (matches.length > 0) instancies = [[objectGroup, "entity.scene.factory"]];
                 }
-
-                vars = [...vars, ...objects]
 
                 let dynamicRule = [];
 
+                if (objectsInstancied.length > 0) {
+                    let dynamicRegex = new RegExp(`\\b(${objectsInstancied.join("|")})\\b`);
+                    dynamicRule.push([dynamicRegex, "entity.scene.element"]);
+                }
+
                 if (vars.length > 0) {
                     let dynamicRegex = new RegExp(`\\b(${vars.join("|")})\\b`);
-                    dynamicRule = [[dynamicRegex, "types.classes"]];
+                    dynamicRule.push([dynamicRegex, "entity.class.user"]);
                 }
+
+                if (objects.length > 0) {
+                    let dynamicRegex = new RegExp(`\\b(${objects.join("|")})\\b`);
+                    dynamicRule.push([dynamicRegex, "entity.scene.prefactory"]);
+                }
+
                 monaco.languages.setMonarchTokensProvider('myAsm', {
                     tokenizer: {
                         root: [
-                            [/"[^"]*"/, "number"],
+                            [/\/\/.*/, "comment"],
+                            [/"[^"]*"/, "entity.flat.string"],
+                            [/\b\d+\b/, "entity.flat.number"],
+                            [/\b(extends|class|var|func|if|else)\b/, "keyword"],
+                            [/\b(SimpleBlk|Group|Vector3|SerializableObject|Color3|Vector2|ButtonStyles|UiProximation|TextAlign|SimpleRectangle|SimpleTextBlks|SimpleButton)\b/, "entity.class.builtin"],
                             ...dynamicRule,
                             ...instancies,
-                            [/\b(SimpleBlk|Group|Vector3|SerializableObject)\b/, "type.builtin"],
-                            [/\b(extends|class|var|func)\b/, "keyword"],
-                            [/\b\d+\b/, "number"],
-                            [/\b(print)\b/, "function"],
-                            [/\b\w+\b(?=\()/, "function"],
-                            [/\/\/.*/, "comment"],
-                            [/\w+/, "types.variables"]
+                            [/\b(Array|InternalDocsStrictEnum|Boolean|String|Math)\b/, "entity.class.lang"],
+                            [/\b(print)\b/, "entity.functions"],
+                            [/\b\w+\b(?=\()/, "entity.functions"],
+                            [/\w+/, "entity.variables.user"]
                         ]
                     }
                 });
@@ -818,6 +842,8 @@ window.startApp = () => {
             scene.add(mesh);
         });
     }
+    const gridHelper = new THREE.GridHelper(100, 50);
+    scene.add(gridHelper);
     createMeshesForModels(serverOrLocalServiceEnv.mapServerModelsService, scene);
     function animate() {
         requestAnimationFrame(animate);

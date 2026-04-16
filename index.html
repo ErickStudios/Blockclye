@@ -1,2 +1,73 @@
-<!--[LOCAL] Redirects The Page To The 'mapEditorService'-->
-<meta http-equiv="refresh" content="0; url=mapEditorService.html">
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Blockclye</title>
+    <style>
+        body {
+            text-align: center;
+            background: #1e1e1e;
+        }
+
+        .logo {
+            width: 200px;
+            display: block;
+            margin: 20px auto;
+        }
+
+        .container {
+            display: flex;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            margin: 10px;
+            background-color: #30c49d;
+            font-size: small;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+        }
+    </style>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <!--[LOCAL] Interface-->
+    <div id="ui">
+        <!--[LOCAL] Image Of The Logo Of Blockclye-->
+        <div style="display: flex;">
+            <!--[LOCAL] Image Of The Blocks-->
+            <img src="Icons/logo/BlockclyeIconNoText.svg" width="20px" , height="20px"
+                style="left: 50%; right: 50%;"></img>
+            <!--[LOCAL] Text That Puts The Name Of The App-->
+            <p style="color: azure; font-family: sans-serif;margin: 0; padding: 0;">Blockclye</p>
+        </div>
+    </div>
+    <!--[LOCAL] Blockclye description-->
+    <div>
+        <h2>What Is Blockclye?</h2>
+        <p>
+            Blockclye is a 3D game engine implemented in JavaScript,
+            completely without needing to download any executable.
+        </p>
+
+        <h2>Why Blockclye?</h2>
+        <p>
+            The name comes from a mix of "block" and "clay".
+        </p>
+    </div>
+    <h4>
+        Click one of the apps to start creating or joining a server
+    </h4>
+    <!--[LOCAL] The Divition Of The Buttons-->
+    <div class="container">
+        <!--[LOCAL] Go To The Map Maker, The 'mapEditorService'-->
+        <a href="mapEditorService.html" class="btn">mapEditorService</a>
+        <!--[LOCAL] Go To The Player Client App, The 'clientService'-->
+        <a href="clientService.html" class="btn">clientService</a>
+    </div>
+</body>
+
+</html>

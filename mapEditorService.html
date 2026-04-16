@@ -4,7 +4,7 @@
   <!--[PAGE_DEC] Set Character Set To UTF-8-->
   <meta charset="UTF-8">
   <!--[PAGE_DEC] Page Title-->
-  <title>NewApp Engine</title>
+  <title>Blockclye Map Creator</title>
   <!--[STYLE] Style Sheet-->
   <link rel="stylesheet" href="style.css">
 </head>
@@ -15,7 +15,14 @@
   <script src="https://unpkg.com/monaco-editor@0.45.0/min/vs/loader.js"></script>
   <!--[CLIENT/LOCAL] User Interface-->
   <div id="ui">
-      <!--[SECTION_UI] 'serverOrLocalService' Tools-->
+    <!--[LOCAL] Image Of The Logo Of Blockclye-->
+    <div style="display: flex;">
+        <!--[LOCAL] Image Of The Blocks-->
+        <img src="Icons/logo/BlockclyeIconNoText.svg" width="20px", height="20px" style="left: 50%; right: 50%;"></img>
+        <!--[LOCAL] Text That Puts The Name Of The App-->
+        <a href="index.html" style="color: azure; font-family: sans-serif;margin: 0; padding: 0;  text-decoration: none;">Blockclye</a>
+    </div>
+    <!--[SECTION_UI] 'serverOrLocalService' Tools-->
     <div class="panel">
         <!--[DECORATIVE] Descriptive Section Text-->
         <p style="font-size: 10px;padding-bottom: 5px;">mapServerScriptService</p>
@@ -27,7 +34,7 @@
             <button id="serverOrLocalService.Import"><img src="Icons/UploadIcon.svg"><p>Import</p></button>
             <!--INTERNAL [LOCAL] Loads A 'serverOrLocalService'-->
             <input type="file" id="serverOrLocalService.ImportInternal" accept=".json,.zip" style="display:none">
-          </div>
+        </div>
     </div>
     <!--[SECTION_UI] 'mapServerModelsService' And 'mapServerScriptService' Tools-->
     <div class="panel">

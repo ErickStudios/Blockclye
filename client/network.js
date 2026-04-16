@@ -12,6 +12,35 @@ export function connect(serverId) {
     socket.onmessage = (event) => {
         const data = JSON.parse(event.data);
 
+        if (data.type == 'idChange') {
+            setState({
+                world: data.world,
+                playerId: data.newId
+            });
+        }
+
+        if (data.type == 'request') {
+
+            if (data.requestType == 'PlayerUI.itemsCount') {
+                let count = window.clientService.PlayerUI.length;
+
+                socket.send(JSON.stringify({
+                    type: "response",
+                    requestId: data.requestId,
+                    data: count
+                }));
+            }
+            if (data.requestType == "PlayerUI.appendItem") {
+                let count = window.clientService.PlayerUI.length;
+                window.clientService.PlayerUI.push(data.data.item);
+                socket.send(JSON.stringify({
+                    type: "response",
+                    requestId: data.requestId,
+                    data: count
+                }));
+            }
+        }
+
         if (data.type === "init") {
             setState({
                 world: data.world,

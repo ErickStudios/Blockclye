@@ -1,636 +1,542 @@
-export function tokenize(code) {
-    const tokens = [];
-    let i = 0;
-
-    const isLetter = c => /[a-zA-Z_]/.test(c);
-    const isNumber = c => /[0-9]/.test(c);
-
-    while (i < code.length) {
-        let c = code[i];
-
-        if (/\s/.test(c)) {
-            i++;
-            continue;
-        }
-
-        if (c === "/" && code[i + 1] === "/") {
-            while (i < code.length && code[i] !== "\n") {
-                i++;
-            }
-            continue;
-        }
-
-        if (c === '"' || c === "'") {
-            let quoteType = c;
-            let value = "";
-            i++;
-            while (i < code.length && code[i] !== quoteType) {
-                value += code[i++];
-            }
-            i++;
-            tokens.push({ type: "string", value });
-            continue;
-        }
-
-        if (isLetter(c)) {
-            let value = "";
-            while (i < code.length && (isLetter(code[i]) || isNumber(code[i]))) {
-                value += code[i++];
-            }
-            tokens.push({ type: "identifier", value });
-            continue;
-        }
-
-        if (isNumber(c)) {
-            let value = "";
-            while (i < code.length && isNumber(code[i])) {
-                value += code[i++];
-            }
-            tokens.push({ type: "number", value: Number(value) });
-            continue;
-        }
-
-        tokens.push({ type: "symbol", value: c });
+// ClaicyScriptCompiled/ClaicyScript.js
+var CSTypeChecker;
+(function(CSTypeChecker2) {
+  function isCSArray(value) {
+    return typeof value === "object" && value !== null && value.type === "array";
+  }
+  CSTypeChecker2.isCSArray = isCSArray;
+  function isCSObject(value) {
+    return typeof value === "object" && value !== null && "type" in value && value.type === "obj" && "object" in value;
+  }
+  CSTypeChecker2.isCSObject = isCSObject;
+  function isCSFunction(value) {
+    return typeof value === "object" && value !== null && "type" in value && value.type === "func" && "func" in value;
+  }
+  CSTypeChecker2.isCSFunction = isCSFunction;
+})(CSTypeChecker || (CSTypeChecker = {}));
+function createEnum(name, allowedValues) {
+  return {
+    type: "func",
+    func: (params) => {
+      const value = params[0];
+      if (!allowedValues.includes(value)) {
+        throw new TypeError(`at \x1B[38;5;161minterface\x1B[0m \x1B[38;5;194m${name}\x1B[0m \x1B[38;5;161mextends\x1B[0m \x1B[38;5;194mInternalDocsStrictEnum\x1B[0m: '${value}' is not valid in this \x1B[38;5;194mInternalDocsStrictEnum\x1B[0m`);
+      }
+      return value;
+    }
+  };
+}
+function errorAtCls(name, msg, before = "") {
+  return `at \x1B[38;5;161mclass\x1B[0m \x1B[38;5;194m${name}\x1B[0m: (${before}${msg})`;
+}
+function tokenize(code) {
+  const tokens = [];
+  let i = 0;
+  const isLetter = (c) => /[a-zA-Z_]/.test(c);
+  const isNumber = (c) => /[0-9]/.test(c);
+  while (i < code.length) {
+    let c = code[i];
+    if (/\s/.test(c)) {
+      i++;
+      continue;
+    }
+    if (c === "/" && code[i + 1] === "/") {
+      while (i < code.length && code[i] !== "\n") {
         i++;
+      }
+      continue;
     }
-
-    return tokens;
+    if (c === '"' || c === "'") {
+      let quoteType = c;
+      let value = "";
+      i++;
+      while (i < code.length && code[i] !== quoteType) {
+        value += code[i++];
+      }
+      i++;
+      tokens.push({ type: "string", value });
+      continue;
+    }
+    if (isLetter(c)) {
+      let value = "";
+      while (i < code.length && (isLetter(code[i]) || isNumber(code[i]))) {
+        value += code[i++];
+      }
+      tokens.push({ type: "identifier", value });
+      continue;
+    }
+    if (isNumber(c)) {
+      let value = "";
+      while (i < code.length && isNumber(code[i])) {
+        value += code[i++];
+      }
+      tokens.push({ type: "number", value: Number(value) });
+      continue;
+    }
+    tokens.push({ type: "symbol", value: c });
+    i++;
+  }
+  return tokens;
 }
-
-/** @param {{type: string;value: any;}[]} tokens  */
-export function parse(tokens) {
-    let i = 0;
-
-    function peek() {
-        return tokens[i];
+function parse(tokens) {
+  let i = 0;
+  function peek() {
+    return tokens[i];
+  }
+  function consume() {
+    return tokens[i++];
+  }
+  function expect(value) {
+    let t = consume();
+    if (!t || t.value !== value) {
+      throw new Error("Expected " + value);
     }
-
-    function consume() {
-        return tokens[i++];
-    }
-
-    function expect(value) {
-        let t = consume();
-        if (!t || t.value !== value) {
-            throw new Error("Expected " + value);
-        }
-    }
-    function parseFunction() {
-        consume(); // function
-
-        let name = consume().value;
-
-        expect("(");
-
-        let params = [];
-
-        while (peek() && peek().value !== ")") {
-            params.push(consume().value);
-            if (peek()?.value === ",") consume();
-        }
-
-        expect(")");
-        expect("{");
-
-        let body = [];
-
-        while (peek() && peek().value !== "}") {
-            let stmt = parseStatement();
-            if (stmt) body.push(stmt);
-        }
-
-        expect("}");
-
-        return {
-            type: "FunctionDecl",
-            name,
-            params,
-            body
-        };
-    }
-    function parseExpression() {
-        let node;
-
-        let token = consume();
-
-        if (token.type === "number") {
-            node = { type: "Number", value: token.value };
-        }
-
-        if (token.type === "identifier") {
-            node = { type: "Identifier", name: token.value };
-        }
-
-        if (token.type === "string") {
-            node = { type: "String", value: token.value };
-        }
-
-        while (peek() && peek().value === ".") {
-            consume();
-
-            let prop = consume();
-
-            node = {
-                type: "Member",
-                object: node,
-                property: prop.value
-            };
-        }
-
-        if (peek()?.value === "(") {
-            consume();
-
-            let args = [];
-
-            while (peek() && peek().value !== ")") {
-                args.push(parseExpression());
-                if (peek()?.value === ",") consume();
-            }
-
-            expect(")");
-
-            return {
-                type: "Call",
-                callee: node,
-                args
-            };
-        }
-
-        return node;
-    }
-
-    function parseVar() {
-        consume(); // var
-
-        let name = consume().value;
-
-        expect("=");
-
-        let value = parseExpression();
-
-        expect(";");
-
-        return {
-            type: "VarDecl",
-            name,
-            value
-        };
-    }
-
-    function parseClass() {
-        consume();
-        let name = consume().value;
-
-        expect("{");
-
-        let body = [];
-
-        while (peek() && peek().value !== "}") {
-            body.push(parseStatement());
-        }
-
-        expect("}");
-
-        return {
-            type: "Class",
-            name,
-            body
-        };
-    }
-
-    function parseStatement() {
-        let t = peek();
-
-        if (t.value === "var") return parseVar();
-
-        if (t.value === "func") return parseFunction();
-
-        if (t.type === "identifier") {
-            let expr = parseExpression();
-            expect(";");
-
-            return {
-                type: "ExprStmt",
-                expr
-            };
-        }
-
+  }
+  function parseFunction() {
+    consume();
+    let name = consume().value;
+    expect("(");
+    let params = [];
+    while (peek() && peek().value !== ")") {
+      params.push(consume().value);
+      if (peek()?.value === ",")
         consume();
     }
-
-    let ast = [];
-
-    while (i < tokens.length) {
-        let t = peek();
-
-        if (t.value === "class") {
-            ast.push(parseClass());
-        } else {
-            ast.push(parseStatement());
-        }
+    expect(")");
+    expect("{");
+    let body = [];
+    while (peek() && peek().value !== "}") {
+      let stmt = parseStatement();
+      if (stmt)
+        body.push(stmt);
     }
-
-    return ast;
+    expect("}");
+    return {
+      type: "FunctionDecl",
+      name,
+      params,
+      body
+    };
+  }
+  function parseExpression() {
+    let left = parsePrimary();
+    while (peek() && ["==", ">", "<"].includes(peek().value)) {
+      let op = consume().value;
+      let right = parsePrimary();
+      left = {
+        type: "BinaryOp",
+        operator: op,
+        left,
+        right
+      };
+    }
+    return left;
+  }
+  function parseIf() {
+    consume();
+    expect("(");
+    let condition = parseExpression();
+    expect(")");
+    expect("{");
+    let body = [];
+    while (peek() && peek().value !== "}") {
+      body.push(parseStatement());
+    }
+    expect("}");
+    let elseBody = null;
+    if (peek()?.value === "else") {
+      consume();
+      expect("{");
+      elseBody = [];
+      while (peek() && peek().value !== "}") {
+        elseBody.push(parseStatement());
+      }
+      expect("}");
+    }
+    return {
+      type: "If",
+      condition,
+      body,
+      elseBody
+    };
+  }
+  function parsePrimary() {
+    let token = consume();
+    let node;
+    if (token.type === "number") {
+      node = { type: "Number", value: token.value };
+    }
+    if (token.type === "identifier") {
+      node = { type: "Identifier", name: token.value };
+    }
+    if (token.type === "string") {
+      node = { type: "String", value: token.value };
+    }
+    while (peek() && peek().value === ".") {
+      consume();
+      let prop = consume();
+      node = {
+        type: "Member",
+        object: node,
+        property: prop.value
+      };
+    }
+    if (peek()?.value === "(") {
+      consume();
+      let args = [];
+      while (peek() && peek().value !== ")") {
+        args.push(parseExpression());
+        if (peek()?.value === ",")
+          consume();
+      }
+      expect(")");
+      return {
+        type: "Call",
+        callee: node,
+        args
+      };
+    }
+    return node;
+  }
+  function parseVar() {
+    consume();
+    let name = consume().value;
+    expect("=");
+    let value = parseExpression();
+    expect(";");
+    return {
+      type: "VarDecl",
+      name,
+      value
+    };
+  }
+  function parseClass() {
+    consume();
+    let name = consume().value;
+    expect("{");
+    let body = [];
+    while (peek() && peek().value !== "}") {
+      body.push(parseStatement());
+    }
+    expect("}");
+    return {
+      type: "Class",
+      name,
+      body
+    };
+  }
+  function parseStatement() {
+    let t = peek();
+    if (t.value === "var")
+      return parseVar();
+    if (t.value === "func")
+      return parseFunction();
+    if (t.value === "if")
+      return parseIf();
+    if (t.type === "identifier") {
+      let expr = parseExpression();
+      expect(";");
+      return {
+        type: "ExprStmt",
+        expr
+      };
+    }
+    consume();
+  }
+  let ast = [];
+  while (i < tokens.length) {
+    let t = peek();
+    if (t.value === "class") {
+      ast.push(parseClass());
+    } else {
+      ast.push(parseStatement());
+    }
+  }
+  return ast;
 }
-
-export async function run(ast, globalSymbolsP, makeOne=false) {
-    let scope = {};
-    let globalSymbols = globalSymbolsP;
-
-    if (makeOne) {
-        return {evalExpr, recursiveInterprete};
+async function run(ast, globalSymbolsP, makeOne = false) {
+  let scopea = {};
+  let globalSymbols = globalSymbolsP;
+  if (makeOne) {
+    return { evalExpr, recursiveInterprete };
+  }
+  async function evalExpr(node, currentScope = scopea, mak = false) {
+    if (node.type === "BinaryOp") {
+      let left = await evalExpr(node.left, currentScope);
+      let right = await evalExpr(node.right, currentScope);
+      switch (node.operator) {
+        case "==":
+          return left == right;
+        case ">":
+          return left > right;
+        case "<":
+          return left < right;
+      }
     }
-
-    async function evalExpr(node, currentScope = scope) {
-        if (node.type === "Number") return node.value;
-
-        if (node.type === "Identifier") {
-            return currentScope[node.name] || globalSymbols[node.name];
-        }
-
-        if (node.type === "Member") {
-            const obj = await evalExpr(node.object, currentScope);
-            if (obj.type === "obj") {
-                return obj.object[node.property];
-            }
-            return obj[node.property];
-        }
-
-        if (node.type === "String") return node.value;
-
-        if (node.type === "Call") {
-            let callee = await evalExpr(node.callee, currentScope);
-            let args = [];
-            for (let arg of node.args) {
-                args.push(await evalExpr(arg, currentScope));
-            }
-
-            if (callee.type === 'userFunc') {
-                let localScope = {};
-
-                // asignar parámetros
-                for (let i = 0; i < callee.params.length; i++) {
-                    localScope[callee.params[i]] = args[i];
-                }
-
-                // ejecutar cuerpo
-                recursiveInterprete(callee.body, localScope);
-
-                return null;
-            }
-
-            if (callee.func) {
-                return await callee.func(args); // <-- await para async func
-            }
-
-            if (typeof callee === "function") {
-                return callee(...args);
-            }
-
-            console.error("No es función:", callee);
-        }
+    if (node.type === "Number")
+      return node.value;
+    if (node.type === "Identifier") {
+      if (mak)
+        return node.name;
+      return globalSymbols[node.name] || currentScope[node.name];
     }
-
-    async function recursiveInterprete(body, scope=scope, globalSymbolsX=globalSymbols) {
-        globalSymbols=globalSymbolsX;
-
-        for (let stmt of body) {
-            if (stmt.type === "ExprStmt") await evalExpr(stmt.expr, scope);
-
-            if (stmt.type === "FunctionDecl") {
-                scope[stmt.name] = {
-                    type: "userFunc",
-                    params: stmt.params,
-                    body: stmt.body
-                };
-            }
-
-            if (stmt.type === "Class") {
-                let classObj = {};
-                scope[stmt.name] = {
-                    type: "obj",
-                    object: classObj
-                };
-                await recursiveInterprete(stmt.body, classObj);
-                globalSymbols[stmt.name] = scope[stmt.name];
-            }
-
-            if (stmt.type === "VarDecl") {
-                scope[stmt.name] = await evalExpr(stmt.value, scope);
-            }
-        }
+    if (node.type === "Member") {
+      if (mak)
+        return node.property;
+      const prop = node.property;
+      const obj = await evalExpr(node.object, currentScope);
+      if (!CSTypeChecker.isCSObject(obj)) {
+        throw new Error("Not an object");
+      }
+      if (typeof obj !== "object")
+        throw new Error("evalExpr can have a value as a not object on member");
+      if (!("object" in obj && typeof obj.object == "object" && obj.object !== null))
+        throw new Error("evalExpr can have a value as a not object on member");
+      if (!(typeof node.property === "string" || typeof node.property === "number")) {
+        throw new Error("invalid property");
+      }
+      if (obj.type === "obj" && obj.object !== null) {
+        return obj.object[node.property];
+      }
+      return obj.object[node.property];
     }
-
-    await recursiveInterprete(ast, scope);
-
-    return scope;
+    if (node.type === "String")
+      return node.value;
+    if (node.type === "Call") {
+      let callee = await evalExpr(node.callee, currentScope);
+      let args = [];
+      for (let arg of node.args) {
+        args.push(await evalExpr(arg, currentScope));
+      }
+      if (!(typeof callee === "object" && "type" in callee))
+        throw new Error("no callable function");
+      if (callee.type === "userFunc") {
+        if (!("params" in callee && Array.isArray(callee.params)))
+          throw new Error("no callable function");
+        let localScope = {};
+        for (let i = 0; i < callee.params.length; i++) {
+          localScope[callee.params[i]] = args[i];
+        }
+        let vale;
+        try {
+          vale = await recursiveInterprete(callee.body, localScope);
+        } catch (ex) {
+          if (ex instanceof TypeError || ex instanceof RangeError) {
+            console.log(node);
+            ex.message = `at \x1B[38;5;161mfunc\x1B[0m ${await evalExpr(node.callee, currentScope, true)}: (${ex.message})`;
+          }
+          throw ex;
+        }
+        return "null";
+      }
+      if ("func" in callee && typeof callee.func == "function") {
+        let vale;
+        vale = await callee.func(args);
+        return vale;
+      }
+      console.error("No es funci\xF3n:", callee);
+    }
+    return Boolean();
+  }
+  async function recursiveInterprete(body, scope = scopea, globalSymbolsX = globalSymbols) {
+    globalSymbols = globalSymbolsX;
+    for (let stmt of body) {
+      if (stmt.type === "ExprStmt")
+        await evalExpr(stmt.expr, scope);
+      if (stmt.type === "If") {
+        let cond = await evalExpr(stmt.condition, scope);
+        if (cond) {
+          await recursiveInterprete(stmt.body, scope);
+        } else if (stmt.elseBody) {
+          await recursiveInterprete(stmt.elseBody, scope);
+        }
+      }
+      if (stmt.type === "FunctionDecl") {
+        scope[stmt.name] = {
+          type: "userFunc",
+          params: stmt.params,
+          body: stmt.body
+        };
+      }
+      if (stmt.type === "Class") {
+        let classObj = {};
+        scope[stmt.name] = {
+          type: "obj",
+          object: classObj
+        };
+        try {
+          await recursiveInterprete(stmt.body, classObj);
+        } catch (ex) {
+          if (ex instanceof TypeError || ex instanceof RangeError || ex instanceof Error) {
+            ex.message = errorAtCls(stmt.name, ex.message);
+          }
+          throw ex;
+        }
+        globalSymbols[stmt.name] = scope[stmt.name];
+      }
+      if (stmt.type === "VarDecl") {
+        scope[stmt.name] = await evalExpr(stmt.value, scope);
+      }
+    }
+  }
+  try {
+    await recursiveInterprete(ast);
+  } catch (ex) {
+    if (ex instanceof TypeError || ex instanceof Error) {
+      console.log("Error", ex.message);
+    }
+  }
+  return scopea;
 }
-
-export function exportLibrary(isGlobal=false) {
-    let globalSymbols = {};
-    globalSymbols.Vector3 = {
-        type: 'func', func: (params) => ({
-            type: 'array',
-            items: params
-        }), hasStatics: true, statics: {
-            'ZERO': () => [0, 0, 0],
-            'ONE': () => [1, 1, 1]
+function exportLibrary(isGlobal = false) {
+  let globalSymbols = {};
+  globalSymbols.createEnum = createEnum;
+  globalSymbols.errorAtCls = errorAtCls;
+  globalSymbols.true = true;
+  globalSymbols.false = false;
+  globalSymbols.Array = {
+    type: "func",
+    func: (params) => ({
+      type: "array",
+      items: params
+    })
+  };
+  globalSymbols.InternalDocsStrictEnum = {
+    type: "func",
+    func: (params) => {
+      if (typeof params[0] !== "string")
+        throw new TypeError(errorAtCls("InternalDocsStrictEnum", "error on create the enum"));
+      let enumName = params[0];
+      if (!CSTypeChecker.isCSArray(params[1]))
+        throw new TypeError(errorAtCls("InternalDocsStrictEnum", "error on create the enum"));
+      let allowedValues = params[1].items;
+      return createEnum(enumName, allowedValues);
+    }
+  };
+  globalSymbols.Boolean = createEnum("Boolean", [true, false]);
+  globalSymbols.print = {
+    type: "func",
+    func: (params) => {
+      console.log(...params);
+    }
+  };
+  globalSymbols.Math = {
+    type: "obj",
+    object: {
+      add: {
+        type: "func",
+        func: (params) => {
+          const a = params[0];
+          const b = params[1];
+          if (typeof a === "number" && typeof b === "number") {
+            return a + b;
+          }
+          if (typeof a === "string" && typeof b === "string") {
+            return a + b;
+          }
+          throw new TypeError("Math.add expects number or string");
         }
-    };
-    globalSymbols.Color3 = globalSymbols.Vector3;
-    globalSymbols.SimpleBlk = {
-        type: 'func', func: (params) => {
-            let model = new mapServerModel();
-            model.basePosition = params[0].items;
-            model.baseSize = params[1].items;
-            model.baseRotation = params[2].items;
-            model.color = params[3].items;
-
-            return {
-                type: 'obj',
-                object: {
-                    internalObjectModel: model,
-                }
-            }
-        }, hasStatics: false
-    };
-    globalSymbols.print = {
-        type: 'func', func: (params) => {
-            console.log(...params)
+      },
+      sub: {
+        type: "func",
+        func: (params) => {
+          const a = params[0];
+          const b = params[1];
+          if (typeof a === "number" && typeof b === "number") {
+            return a - b;
+          }
+          throw new TypeError("Math.sub expects number");
         }
-    };
-    globalSymbols.addChild = {
-        type: 'func', func: async (params) => {
-            return new Promise(resolve => {
-                // enviar mensaje al main thread
-                self.retval = undefined;
-                self.postMessage({
-                    func: 'crt',
-                    params: [JSON.parse(JSON.stringify(params[0].object.internalObjectModel))]
-                });
-
-                // registrar listener solo para este call
-                const handler = (e) => {
-                    if (e.data.retval !== undefined) {
-                        self.removeEventListener('message', handler);
-                        params[0].object['indexInternalFinally'] = e.data.retval;
-                        resolve({ type: 'SyncSimpleBlkNumber', value: e.data.retval });
-                    }
-                };
-
-                self.addEventListener('message', handler);
-            });
+      },
+      div: {
+        type: "func",
+        func: (params) => {
+          const a = params[0];
+          const b = params[1];
+          if (typeof a === "number" && typeof b === "number") {
+            return a / b;
+          }
+          throw new TypeError("Math.div expects number");
         }
-    };
-    globalSymbols.SerializableObject = {
-        type: 'func', func: async (params) => {
-            return new Promise(resolve => {
-                let objectToSerialize = params[0];
-
-                if (objectToSerialize.type == 'SyncSimpleBlkNumber') {
-                    const isMainThread = !(
-                        typeof WorkerGlobalScope !== "undefined" &&
-                        self instanceof WorkerGlobalScope
-                    );
-
-                    if (!isMainThread) self.retval = undefined;
-
-                    let objectSerialized = {
-                        type: 'obj',
-                        object: {
-                            id: { type: 'Number', value: objectToSerialize.value },
-                            pos: { type: 'obj', object: { arrayInternal: [0, 0, 0] } },
-                            size: { type: 'obj', object: { arrayInternal: [0, 0, 0] } },
-                            rotation: { type: 'obj', object: { arrayInternal: [0, 0, 0] } }
-                        }
-                    };
-
-                    if (isMainThread) {
-                        let retval = globalThis.serverOrLocalServiceEnv.mapServerModelsService[objectSerialized.object.id.value];
-
-                        objectSerialized.object.material = retval.material;
-                        objectSerialized.object.weldedTo = retval.weldedTo;
-                        objectSerialized.object.color = retval.color;
-
-                        let objectPos = objectSerialized.object.pos.object;
-                        let objectSize = objectSerialized.object.size.object;
-                        let objectRotation = objectSerialized.object.rotation.object;
-
-                        objectPos.arrayInternal = [...retval.basePosition];
-                        objectSize.arrayInternal = [...retval.baseSize];
-                        objectRotation.arrayInternal = [...retval.baseRotation];
-                        objectSerialized.object.mass = retval.mass;
-                        objectSerialized.object.useGravity = retval.useGravity;
-                        objectSerialized.object.isStatic = retval.isStatic;
-                        objectSerialized.object.velocity = retval.velocity;
-
-                        let registerPosVector3 = (field) => {
-                            field.getX = {
-                                type: 'func', func: (params) => {
-                                    return field.arrayInternal[0];
-                                }
-                            };
-                            field.getY = {
-                                type: 'func', func: (params) => {
-                                    return field.arrayInternal[1];
-                                }
-                            };
-                            field.getZ = {
-                                type: 'func', func: (params) => {
-                                    return field.arrayInternal[2];
-                                }
-                            };
-                            field.setX = {
-                                type: 'func', func: (params) => {
-                                    field.arrayInternal[0] = params[0];
-                                }
-                            };
-                            field.setY = {
-                                type: 'func', func: (params) => {
-                                    field.arrayInternal[1] = params[0];
-                                }
-                            };
-                            field.setZ = {
-                                type: 'func', func: (params) => {
-                                    field.arrayInternal[2] = params[0];
-                                }
-                            };
-                            field.set = {
-                                type: 'func', func: (params) => {
-                                    field.arrayInternal = params[0].items;
-                                }
-                            };
-                        };
-                        registerPosVector3(objectPos);
-                        registerPosVector3(objectSize);
-                        registerPosVector3(objectRotation);
-
-                        objectSerialized.object.request = {
-                            type: 'func', func: (params) => {
-
-                                let retval = window.serverOrLocalServiceEnv.mapServerModelsService[objectSerialized.object.id.value];
-                                objectSerialized.object.color = retval.color;
-                                objectSerialized.object.material = retval.material;
-                                objectSerialized.object.weldedTo = retval.weldedTo;
-                                objectSerialized.object.mass = retval.mass;
-                                objectSerialized.object.useGravity = retval.useGravity;
-                                objectSerialized.object.isStatic = retval.isStatic;
-                                objectPos.arrayInternal = [...retval.basePosition];
-                                objectSize.arrayInternal = [...retval.baseSize];
-                                objectRotation.arrayInternal = [...retval.baseRotation];
-                                objectSerialized.object.velocity = retval.velocity;
-
-                            }
-                        };
-
-                        objectSerialized.object.update = {
-                            type: 'func', func: (params) => {
-                                let obje = globalThis.serverOrLocalServiceEnv.mapServerModelsService[objectSerialized.object.id.value];
-                                obje.material = objectSerialized.object.material;
-                                obje.weldedTo = objectSerialized.object.weldedTo;
-                                globalThis.serverOrLocalServiceEnv.mapServerModelsService.move(objectSerialized.object.id.value, ...objectPos.arrayInternal);
-                                globalThis.serverOrLocalServiceEnv.mapServerModelsService.scale(objectSerialized.object.id.value, ...objectSize.arrayInternal);
-                                globalThis.serverOrLocalServiceEnv.mapServerModelsService.rotate(objectSerialized.object.id.value, ...objectRotation.arrayInternal);
-                                obje.mass = objectSerialized.object.mass;
-                                obje.useGravity = objectSerialized.object.useGravity;
-                                obje.isStatic = objectSerialized.object.isStatic;
-                                obje.velocity = objectSerialized.object.velocity;
-                                obje.color = objectSerialized.object.color;
-                            }
-                        };
-                        resolve(objectSerialized);
-
-                        return;
-                    }
-
-                    self.postMessage({
-                        func: 'req',
-                        params: [objectSerialized.object.id.value]
-                    });
-
-                    const handler = (e) => {
-                        let retval = e.data.retval;
-                        if (e.data.retval !== undefined) {
-                            self.removeEventListener('message', handler);
-                            objectSerialized.object.material = retval.material;
-                            objectSerialized.object.weldedTo = retval.weldedTo;
-                            objectSerialized.object.color = retval.color;
-
-                            let objectPos = objectSerialized.object.pos.object;
-                            let objectSize = objectSerialized.object.size.object;
-                            let objectRotation = objectSerialized.object.rotation.object;
-
-                            objectPos.arrayInternal = retval.basePosition;
-                            objectSize.arrayInternal = retval.baseSize;
-                            objectRotation.arrayInternal = retval.baseRotation;
-                            objectSerialized.object.mass = retval.mass;
-                            objectSerialized.object.useGravity = retval.useGravity;
-                            objectSerialized.object.isStatic = retval.isStatic;
-                            objectSerialized.object.velocity = retval.velocity;
-
-                            let registerPosVector3 = (field) => {
-                                field.getX = {
-                                    type: 'func', func: (params) => {
-                                        return field.arrayInternal[0];
-                                    }
-                                };
-                                field.getY = {
-                                    type: 'func', func: (params) => {
-                                        return field.arrayInternal[1];
-                                    }
-                                };
-                                field.getZ = {
-                                    type: 'func', func: (params) => {
-                                        return field.arrayInternal[2];
-                                    }
-                                };
-                                field.setX = {
-                                    type: 'func', func: (params) => {
-                                        field.arrayInternal[0] = params[0];
-                                    }
-                                };
-                                field.setY = {
-                                    type: 'func', func: (params) => {
-                                        field.arrayInternal[1] = params[0];
-                                    }
-                                };
-                                field.setZ = {
-                                    type: 'func', func: (params) => {
-                                        field.arrayInternal[2] = params[0];
-                                    }
-                                };
-                            };
-                            registerPosVector3(objectPos);
-                            registerPosVector3(objectSize);
-                            registerPosVector3(objectRotation);
-
-                            objectSerialized.object.request = {
-                                type: 'func', func: async (params) => {
-                                    return new Promise(resolve2 => {
-                                        self.retval = undefined;
-                                        self.postMessage({
-                                            func: 'req',
-                                            params: [objectSerialized.object.id.value]
-                                        });
-                                        const handler2 = (e) => {
-                                            if (e.data.retval !== undefined) {
-                                                self.removeEventListener('message', handler2);
-                                                let retval = e.data.retval;
-                                                objectSerialized.object.color = retval.color;
-                                                objectSerialized.object.material = retval.material;
-                                                objectSerialized.object.weldedTo = retval.weldedTo;
-                                                objectSerialized.object.mass = retval.mass;
-                                                objectSerialized.object.useGravity = retval.useGravity;
-                                                objectSerialized.object.isStatic = retval.isStatic;
-                                                objectPos.arrayInternal = retval.basePosition;
-                                                objectSize.arrayInternal = retval.baseSize;
-                                                objectRotation.objectRotation = retval.baseRotation;
-                                                objectSerialized.object.velocity = retval.velocity;
-
-                                                resolve2(1);
-                                            }
-                                        }
-                                        self.addEventListener('message', handler2);
-
-                                    });
-                                }
-                            };
-
-                            objectSerialized.object.update = {
-                                type: 'func', func: (params) => {
-                                    self.postMessage({
-                                        func: 'updt',
-                                        params: [objectSerialized.object.id.value, {
-                                            material: objectSerialized.object.material,
-                                            weldedTo: objectSerialized.object.weldedTo,
-                                            basePosition: objectPos.arrayInternal,
-                                            baseSize: objectSize.arrayInternal,
-                                            baseRotation: objectRotation.arrayInternal,
-                                            mass: objectSerialized.object.mass,
-                                            useGravity: objectSerialized.object.useGravity,
-                                            isStatic: objectSerialized.object.isStatic,
-                                            velocity: objectSerialized.object.velocity
-                                        }]
-                                    });
-                                }
-                            };
-
-                            resolve(objectSerialized);
-                        }
-                    };
-
-                    self.addEventListener('message', handler);
-                }
-            });
+      },
+      mul: {
+        type: "func",
+        func: (params) => {
+          const a = params[0];
+          const b = params[1];
+          if (typeof a === "number" && typeof b === "number") {
+            return a * b;
+          }
+          throw new TypeError("Math.mul expects number");
         }
-    };
-    globalSymbols.Math = {type: "obj", object: {
-            add: { type: 'func', func: (params) => params[0] + params[1] },
-            sub: { type: 'func', func: (params) => params[0] - params[1] },
-            div: { type: 'func', func: (params) => params[0] / params[1] },
-            mul: { type: 'func', func: (params) => params[0] * params[1] },
-        }
-    };
-    
-    return globalSymbols;
+      }
+    }
+  };
+  globalSymbols.String = {
+    type: "func",
+    func: (params) => {
+      return String(params[0]);
+    }
+  };
+  globalSymbols.exportToGlobal = {
+    type: "func",
+    func: (params) => {
+      let exportAs = params[0];
+      let exportValue = params[1];
+      if (typeof exportAs !== "string")
+        throw new SyntaxError(errorAtCls("InternalNamespace", "trying to get a invalid var name"));
+      globalSymbols[exportAs] = exportValue;
+    }
+  };
+  globalSymbols.notDefined = {
+    type: "func",
+    func: (params) => {
+      if (typeof params[0] !== "string")
+        throw new SyntaxError(errorAtCls("InternalNamespace", "trying to get a invalid var name"));
+      let exportAs = params[0];
+      return !(exportAs in globalSymbols);
+    }
+  };
+  globalSymbols.undef = {
+    type: "func",
+    func: (params) => {
+      if (typeof params[0] !== "string")
+        throw new SyntaxError(errorAtCls("InternalNamespace", "trying to get a invalid var name"));
+      delete globalSymbols[params[0]];
+    }
+  };
+  globalSymbols.getVar = {
+    type: "func",
+    func: (params) => {
+      let exportAs = params[0];
+      if (typeof exportAs !== "string")
+        throw new SyntaxError(errorAtCls("InternalNamespace", "trying to get a invalid var name"));
+      return globalSymbols[exportAs];
+    }
+  };
+  globalSymbols.Object = {
+    type: "func",
+    func: (params) => {
+      let object = { type: "obj", object: {} };
+      object.object.set = { type: "func", func: (params2) => {
+        if (typeof params2[0] !== "string")
+          throw new Error("Not allowed");
+        object.object[params2[0]] = params2[1];
+        return true;
+      } };
+      object.object.get = { type: "func", func: (params2) => {
+        if (typeof params2[0] !== "string")
+          throw new Error("Not allowed");
+        return object.object[params2[0]];
+      } };
+      return object;
+    }
+  };
+  return globalSymbols;
 }
+export {
+  exportLibrary,
+  parse,
+  run,
+  tokenize
+};
