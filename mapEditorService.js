@@ -480,7 +480,7 @@ window.startApp = () => {
                     { token: 'entity.flat', foreground: '#8886e3' },
                     { token: 'entity.flat.number', foreground: '#8886e3' },
                     { token: 'entity.flat.string', foreground: '#e3b986' },
-                    { token: 'comment', foreground: '#9e9e9e' },
+                    { token: 'comment', foreground: '#608B4E' },
                 ],
                 colors: {
                     "editor.foreground": "#ffffff",
@@ -497,6 +497,7 @@ window.startApp = () => {
 
             let updateSyntaxHighlight = /** @param {string} code */ (code) => {
                 let vars = [...code.matchAll(/\bclass\s+(\w+)/g)].map(v => v[1]);
+                vars = [...vars, ...code.matchAll(/\bclassfunc\s+(\w+)/g)].map(v => v[1]);
                 let objects = [...code.matchAll(/\bvar\b\s+(\w+)\s+=\s+ServerToInit.virtualWorkspace.importScene\(/g)].map(v => v[1]);
                 let objectsInstancied = [...code.matchAll(/\bvar\b\s+(\w+)\s+=\s+ServerToInit.virtualWorkspace.addChild\(/g)].map(v => v[1]);
                 let instancies = [];
@@ -536,11 +537,11 @@ window.startApp = () => {
                             [/\/\/.*/, "comment"],
                             [/"[^"]*"/, "entity.flat.string"],
                             [/\b\d+\b/, "entity.flat.number"],
-                            [/\b(extends|class|var|func|if|else)\b/, "keyword"],
+                            [/\b(extends|class|return|classfunc|var|func|if|else)\b/, "keyword"],
                             [/\b(SimpleBlk|Group|Vector3|SerializableObject|Color3|Vector2|ButtonStyles|UiProximation|TextAlign|SimpleRectangle|SimpleTextBlks|SimpleButton)\b/, "entity.class.builtin"],
                             ...dynamicRule,
                             ...instancies,
-                            [/\b(Array|InternalDocsStrictEnum|Boolean|String|Math)\b/, "entity.class.lang"],
+                            [/\b(Array|InternalDocsStrictEnum|Boolean|String|Math|Object)\b/, "entity.class.lang"],
                             [/\b(print)\b/, "entity.functions"],
                             [/\b\w+\b(?=\()/, "entity.functions"],
                             [/\w+/, "entity.variables.user"]

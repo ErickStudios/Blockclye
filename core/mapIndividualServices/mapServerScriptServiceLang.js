@@ -1,4 +1,9 @@
 // ClaicyScriptCompiled/ClaicyScript.js
+var ReturnException = class {
+  constructor(value) {
+    this.value = value;
+  }
+};
 var CSTypeChecker;
 (function(CSTypeChecker2) {
   function isCSArray(value) {
@@ -85,6 +90,18 @@ function parse(tokens) {
   }
   function consume() {
     return tokens[i++];
+  }
+  function parseReturn() {
+    consume();
+    let value = null;
+    if (peek()?.value !== ";") {
+      value = parseExpression();
+    }
+    expect(";");
+    return {
+      type: "Return",
+      value
+    };
   }
   function expect(value) {
     let t = consume();
@@ -229,7 +246,11 @@ function parse(tokens) {
     let t = peek();
     if (t.value === "var")
       return parseVar();
+    if (t.value === "return")
+      return parseReturn();
     if (t.value === "func")
+      return parseFunction();
+    if (t.value === "classfunc")
       return parseFunction();
     if (t.value === "if")
       return parseIf();
@@ -321,6 +342,9 @@ async function run(ast, globalSymbolsP, makeOne = false) {
         try {
           vale = await recursiveInterprete(callee.body, localScope);
         } catch (ex) {
+          if (ex instanceof ReturnException) {
+            return ex.value;
+          }
           if (ex instanceof TypeError || ex instanceof RangeError) {
             console.log(node);
             ex.message = `at \x1B[38;5;161mfunc\x1B[0m ${await evalExpr(node.callee, currentScope, true)}: (${ex.message})`;
@@ -343,6 +367,10 @@ async function run(ast, globalSymbolsP, makeOne = false) {
     for (let stmt of body) {
       if (stmt.type === "ExprStmt")
         await evalExpr(stmt.expr, scope);
+      if (stmt.type === "Return") {
+        let value = stmt.value ? await evalExpr(stmt.value, scope) : null;
+        throw new ReturnException(value);
+      }
       if (stmt.type === "If") {
         let cond = await evalExpr(stmt.condition, scope);
         if (cond) {
