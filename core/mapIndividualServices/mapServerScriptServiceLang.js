@@ -19,6 +19,9 @@ var CSTypeChecker;
   }
   CSTypeChecker2.isCSFunction = isCSFunction;
 })(CSTypeChecker || (CSTypeChecker = {}));
+function interfaceError(name, msg) {
+  return `at \x1B[38;5;161minterface\x1B[0m \x1B[38;5;194m${name}\x1B[0m: ${msg}`;
+}
 function createEnum(name, allowedValues) {
   return {
     type: "func",
@@ -135,6 +138,46 @@ function parse(tokens) {
       body
     };
   }
+  function parseClsFunction() {
+    consume();
+    let expectatives = [];
+    let name = consume().value;
+    expect("(");
+    let params = [];
+    while (peek() && peek().value !== ")") {
+      params.push(consume().value);
+      if (peek()?.value === ",")
+        consume();
+    }
+    expect(")");
+    if (peek() && peek().value === "extends") {
+      consume();
+      if (peek() && peek().value === "(") {
+        while (peek() && peek().value !== ")") {
+          expectatives.push(consume().value);
+          if (peek()?.value === ",")
+            consume();
+        }
+      } else {
+        expectatives.push(consume().value);
+      }
+    }
+    expect("{");
+    let body = [];
+    while (peek() && peek().value !== "}") {
+      let stmt = parseStatement();
+      if (stmt)
+        body.push(stmt);
+    }
+    expect("}");
+    return {
+      type: "FunctionDecl",
+      name,
+      params,
+      body,
+      expectatives
+    };
+  }
   function parseExpression() {
     let left = parsePrimary();
     while (peek() && ["==", ">", "<"].includes(peek().value)) {
@@ -182,6 +225,29 @@ function parse(tokens) {
     let node;
     if (token.type === "number") {
       node = { type: "Number", value: token.value };
+    }
+    if (token.type === "identifier" && token.value === "func") {
+      expect("(");
+      let params = [];
+      while (peek() && peek().value !== ")") {
+        params.push(consume().value);
+        if (peek()?.value === ",")
+          consume();
+      }
+      expect(")");
+      expect("{");
+      let body = [];
+      while (peek() && peek().value !== "}") {
+        let stmt = parseStatement();
+        if (stmt)
+          body.push(stmt);
+      }
+      expect("}");
+      return {
+        type: "AnonymousFunction",
+        params,
+        body
+      };
     }
     if (token.type === "identifier") {
       node = { type: "Identifier", name: token.value };
@@ -242,8 +308,30 @@ function parse(tokens) {
       body
     };
   }
+  function parseInterface() {
+    consume();
+    let name = consume().value;
+    expect("{");
+    let props = {};
+    while (peek() && peek().value !== "}") {
+      expect("var");
+      let propName = consume().value;
+      expect(":");
+      let typeName = consume().value;
+      expect(";");
+      props[propName] = typeName;
+    }
+    expect("}");
+    return {
+      type: "Interface",
+      name,
+      props
+    };
+  }
   function parseStatement() {
     let t = peek();
+    if (t.value === "interface")
+      return parseInterface();
     if (t.value === "var")
       return parseVar();
     if (t.value === "return")
@@ -251,7 +339,7 @@ function parse(tokens) {
     if (t.value === "func")
       return parseFunction();
     if (t.value === "classfunc")
-      return parseFunction();
+      return parseClsFunction();
     if (t.value === "if")
       return parseIf();
     if (t.type === "identifier") {
@@ -282,6 +370,13 @@ async function run(ast, globalSymbolsP, makeOne = false) {
     return { evalExpr, recursiveInterprete };
   }
   async function evalExpr(node, currentScope = scopea, mak = false) {
+    if (node.type === "AnonymousFunction") {
+      return {
+        type: "userFunc",
+        params: node.params,
+        body: node.body
+      };
+    }
     if (node.type === "BinaryOp") {
       let left = await evalExpr(node.left, currentScope);
       let right = await evalExpr(node.right, currentScope);
@@ -343,10 +438,38 @@ async function run(ast, globalSymbolsP, makeOne = false) {
           vale = await recursiveInterprete(callee.body, localScope);
         } catch (ex) {
           if (ex instanceof ReturnException) {
-            return ex.value;
+            let result = ex.value;
+            if ("expectatives" in callee && Array.isArray(callee.expectatives) && callee.expectatives.length > 0) {
+              for (let ifaceName of callee.expectatives) {
+                let iface = globalSymbols[ifaceName];
+                if (typeof iface !== "object")
+                  throw new Error("The interface is not a object");
+                if (!iface || iface.type !== "interface") {
+                  throw new Error(`Interface ${ifaceName} not found`);
+                }
+                if (!CSTypeChecker.isCSObject(result)) {
+                  throw new TypeError(`Return is not an object for interface ${ifaceName}`);
+                }
+                if (!("props" in iface))
+                  throw new TypeError("not props in interface");
+                for (let prop in iface.props) {
+                  if (!(prop in result.object)) {
+                    throw new TypeError(interfaceError(ifaceName, `'${prop}' is not in the class that implements the interface`));
+                  }
+                  let expectedType = iface.props[prop];
+                  let value = result.object[prop];
+                  if (expectedType === "number" && typeof value !== "number") {
+                    throw new TypeError(`Property '${prop}' must be number`);
+                  }
+                  if (expectedType === "string" && typeof value !== "string") {
+                    throw new TypeError(`Property '${prop}' must be string`);
+                  }
+                }
+              }
+            }
+            return result;
           }
           if (ex instanceof TypeError || ex instanceof RangeError) {
-            console.log(node);
             ex.message = `at \x1B[38;5;161mfunc\x1B[0m ${await evalExpr(node.callee, currentScope, true)}: (${ex.message})`;
           }
           throw ex;
@@ -371,6 +494,12 @@ async function run(ast, globalSymbolsP, makeOne = false) {
         let value = stmt.value ? await evalExpr(stmt.value, scope) : null;
         throw new ReturnException(value);
       }
+      if (stmt.type === "Interface") {
+        globalSymbols[stmt.name] = {
+          type: "interface",
+          props: stmt.props
+        };
+      }
       if (stmt.type === "If") {
         let cond = await evalExpr(stmt.condition, scope);
         if (cond) {
@@ -383,7 +512,8 @@ async function run(ast, globalSymbolsP, makeOne = false) {
         scope[stmt.name] = {
           type: "userFunc",
           params: stmt.params,
-          body: stmt.body
+          body: stmt.body,
+          expectatives: stmt.expectatives || []
         };
       }
       if (stmt.type === "Class") {
@@ -546,17 +676,23 @@ function exportLibrary(isGlobal = false) {
     type: "func",
     func: (params) => {
       let object = { type: "obj", object: {} };
-      object.object.set = { type: "func", func: (params2) => {
-        if (typeof params2[0] !== "string")
-          throw new Error("Not allowed");
-        object.object[params2[0]] = params2[1];
-        return true;
-      } };
-      object.object.get = { type: "func", func: (params2) => {
-        if (typeof params2[0] !== "string")
-          throw new Error("Not allowed");
-        return object.object[params2[0]];
-      } };
+      object.object.set = {
+        type: "func",
+        func: (params2) => {
+          if (typeof params2[0] !== "string")
+            throw new Error("Not allowed");
+          object.object[params2[0]] = params2[1];
+          return true;
+        }
+      };
+      object.object.get = {
+        type: "func",
+        func: (params2) => {
+          if (typeof params2[0] !== "string")
+            throw new Error("Not allowed");
+          return object.object[params2[0]];
+        }
+      };
       return object;
     }
   };
