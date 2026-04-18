@@ -60,6 +60,26 @@ window.startApp = () => {
     let isLocked = false;
     let keys = {};
     let rotating = false;
+    let isAnArea = (blkId) => {
+        let checkNode = (node) => {
+            if (node.type == 'area' && node.area == blkId) return true;
+            return false;
+        }
+        let recursive = (nodep) => {
+            for (const v of nodep) {
+                if (v.type == 'group') {
+                     let ab = recursive(v.children);
+                     if (ab) return ab;
+                }
+                else { 
+                    let ab = checkNode(v);
+                    if (ab) return ab; 
+                }
+            }
+            return false;
+        }
+        return recursive(serverOrLocalServiceEnv.workspaceHierarchy);
+    }
     canvas.addEventListener("contextmenu", (e) => {
         e.preventDefault();
     });
@@ -163,7 +183,11 @@ window.startApp = () => {
             } 
             else if (node.type == "propiety") {
                 icon.src = "./Icons/serverOrLocalServiceExplorer/PropietyAditionalIcon.svg";
-            } else {
+            }
+            else if (node.type == 'area') {
+                icon.src = "./Icons/serverOrLocalServiceExplorer/Area3DIcon.svg";
+            } 
+            else {
                 if (node.type == "part" && serverOrLocalServiceEnv.mapServerModelsService[node.ref].isStatic) 
                     icon.src = "./Icons/serverOrLocalServiceExplorer/StaticPart3DIcon.svg";
                 else 
@@ -179,6 +203,14 @@ window.startApp = () => {
                         serverOrLocalServiceEnv.mapServerModelsService[selectedModelIndex].weldedTo = node.ref;
                     else 
                         selectedModelIndex = node.ref;
+                }
+            }
+            if (node.type == 'area') {
+                label.onclick = () => {
+                    if (selectMode == AppLib.OperationOfManipule.weldObject)
+                        serverOrLocalServiceEnv.mapServerModelsService[selectedModelIndex].weldedTo = node.area;
+                    else 
+                        selectedModelIndex = node.area;
                 }
             }
             if (node.type == "propiety") {
@@ -446,9 +478,28 @@ window.startApp = () => {
             renderWorkspace(workspaceHierarchy, workspace);
         })
 
-        newMenu.appendChild(addRigidPart);
-        newMenu.appendChild(addStaticPart);
+        const addArea3D = creatingThing("Area", "./Icons/serverOrLocalServiceExplorer/Area3DIcon.svg", () => {
+            workspaceHierarchy.push({
+                type: 'area',
+                name: 'area',
+                area: serverOrLocalServiceEnv.mapServerModelsService.length
+            });
+            let ModelAdd = new mapServerModel();
+            ModelAdd.basePosition = [camera.position.x,camera.position.y - 2,camera.position.z - 2];
+            ModelAdd.color = [0, 1, 0];
+            ModelAdd.isStatic = true;
+            serverOrLocalServiceEnv.mapServerModelsService.push(ModelAdd);
+
+            menu.remove();
+            renderWorkspace(workspaceHierarchy, workspace);
+        })
+
+
         newMenu.appendChild(addGroup);
+        newMenu.appendChild(addStaticPart);
+        newMenu.appendChild(addArea3D);
+        newMenu.appendChild(addGroup);
+        newMenu.appendChild(addRigidPart);
         newMenu.appendChild(addPropiety);
 
         menu.appendChild(newMenu);
@@ -800,11 +851,14 @@ window.startApp = () => {
         }
     });
     let syncSceneWithModels = (models, scene) => {
-        models.forEach(model => {
+        models.forEach((model, id) => {
             if (!modelMeshes.has(model)) {
                 const geometry = new THREE.BoxGeometry(1,1,1);
+                let anArea3dornot = isAnArea(id);
                 const material = new THREE.MeshStandardMaterial({
-                    color: new THREE.Color(...model.color)
+                    color: (anArea3dornot ? new THREE.Color(0,0.5,1) : new THREE.Color(...model.color)),
+                    transparent: anArea3dornot,
+                    opacity: (anArea3dornot ? 0.25 : 1)
                 });
                 const mesh = new THREE.Mesh(geometry, material);
                 mesh.position.set(...model.basePosition);
@@ -824,14 +878,16 @@ window.startApp = () => {
             }
         }
 
-        models.forEach(model => {
+        models.forEach((model, id) => {
             const mesh = modelMeshes.get(model);
             if (!mesh) return;
+
+            let anArea3dornot = isAnArea(id);
 
             mesh.position.set(...model.basePosition);
             mesh.scale.set(...model.baseSize);
             mesh.rotation.set(...model.baseRotation);
-            mesh.material.color.setRGB(...model.color);
+            if (!anArea3dornot) mesh.material.color.setRGB(...model.color);
         });
     }
     const loader = new THREE.CubeTextureLoader();

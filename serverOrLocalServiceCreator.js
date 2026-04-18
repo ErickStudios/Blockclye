@@ -9,6 +9,40 @@ let sharedLibrary;
 let lib;
 let fileToLoad = argv[2];
 
+let isAnArea = (blkId) => {
+    let checkNode = (node) => {
+        if (node.type == 'area' && node.area == blkId) return true;
+        return false;
+    }
+    let recursive = (nodep) => {
+        for (const v of nodep) {
+            if (v.type == 'group') {
+                let ab = recursive(v.children);
+                if (ab) return ab;
+            }
+            else {
+                let ab = checkNode(v);
+                if (ab) return ab;
+            }
+        }
+        return false;
+    }
+    return recursive(world.serverOrLocalService.workspaceHierarchy);
+}
+let updateWorkspace = () => {
+    let updateNode = /** @param {{[key: string]: any}} node */(node) => {
+        if ('type' in node && typeof node.type === 'string' && node.type == 'area' && 'area' in node) {
+            world.areabled_parts.push(node.area);
+        }
+    }
+    let recursive = (nodep) => {
+        nodep.forEach((node) => {
+            if (node.type == 'group') recursive(node.children);
+            else updateNode(node);
+        })
+    }
+    recursive(world.serverOrLocalService.workspaceHierarchy);
+}
 function RayColides(dir, pos1, pos2, maxDist) {
     let dx = pos2[0] - pos1[0];
     let dy = pos2[1] - pos1[1];
@@ -59,6 +93,93 @@ let findUniversal = (params) => {
             if (v.name == element) {
                 if (v.type == "part") {
                     return { type: 'SyncSimpleBlkNumber', value: v.ref }
+                }
+                if (v.type == 'area') {
+                    let blkArea = world.serverOrLocalService.mapServerModelsService[v.area];
+                    let objectToSerialize = { type: 'obj', object: {
+                        colisionShape: {
+                            type: 'obj',
+                            object: {
+                                basePosition: blkArea.basePosition,
+                                baseSize: blkArea.baseSize
+                            }
+                        }
+                    }};
+                    objectToSerialize.object.colides = { type: 'func', func: (params) => {
+                        function isInside(X, Y) {
+                            const Xmin = {
+                                x: X.position.x - X.size.x / 2,
+                                y: X.position.y - X.size.y / 2,
+                                z: X.position.z - X.size.z / 2,
+                            };
+
+                            const Xmax = {
+                                x: X.position.x + X.size.x / 2,
+                                y: X.position.y + X.size.y / 2,
+                                z: X.position.z + X.size.z / 2,
+                            };
+
+                            const Ymin = {
+                                x: Y.position.x - Y.size.x / 2,
+                                y: Y.position.y - Y.size.y / 2,
+                                z: Y.position.z - Y.size.z / 2,
+                            };
+
+                            const Ymax = {
+                                x: Y.position.x + Y.size.x / 2,
+                                y: Y.position.y + Y.size.y / 2,
+                                z: Y.position.z + Y.size.z / 2,
+                            };
+                            const EPS = 0.0001;
+
+                            return (
+                                Ymin.x >= Xmin.x - EPS &&
+                                Ymax.x <= Xmax.x + EPS &&
+
+                                Ymin.y >= Xmin.y - EPS &&
+                                Ymax.y <= Xmax.y + EPS &&
+
+                                Ymin.z >= Xmin.z - EPS &&
+                                Ymax.z <= Xmax.z + EPS
+                            );
+                        }
+                        let object2 = params[0];
+                        if (typeof object2 === "object" && object2.type === 'obj' && 'object' in object2) {
+                            object2 = object2.object;
+                            if ('index' in object2 && typeof object2.index === "number") {
+                                object2 = object2.index;
+                            }
+                        }
+                        let model = world.serverOrLocalService.mapServerModelsService[object2];
+
+                        return isInside(
+                            {
+                                position: {
+                                     x: objectToSerialize.object.colisionShape.object.basePosition[0],
+                                     y: objectToSerialize.object.colisionShape.object.basePosition[1],
+                                     z: objectToSerialize.object.colisionShape.object.basePosition[2],
+                                },
+                                size: {
+                                     x: objectToSerialize.object.colisionShape.object.baseSize[0],
+                                     y: objectToSerialize.object.colisionShape.object.baseSize[1],
+                                     z: objectToSerialize.object.colisionShape.object.baseSize[2],
+                                }
+                            }, 
+                            {
+                                position: {
+                                     x: model.basePosition[0],
+                                     y: model.basePosition[1],
+                                     z: model.basePosition[2],
+                                },
+                                size: {
+                                     x: model.baseSize[0],
+                                     y: model.baseSize[1],
+                                     z: model.baseSize[2],
+                                }
+                            }
+                        )
+                    }}
+                    return objectToSerialize;
                 }
                 else {
                     node = v;
@@ -819,13 +940,14 @@ console.log("🚀 Server running on ws://" + getLocalIP() + ":8080");
 // estado del mundo
 let world = {
     players: {},
+    areabled_parts: [],
     serverOrLocalService: new serverOrLocalService()
 };
 
-function updateDeletation(deletedId) {
+function updateDeletation(deletedId, elementsToDelete=1) {
     wss.clients.forEach((client) => {
         if (client.playerId > deletedId) {
-            client.playerId--;
+            client.playerId -= elementsToDelete;
 
             if (client.readyState === WebSocket.OPEN) {
                 client.send(JSON.stringify({
@@ -836,6 +958,27 @@ function updateDeletation(deletedId) {
             }
         }
     });
+
+    let workspaceReader = (parent) => {
+        parent.forEach((node) => {
+            if (node.type == 'part' && 'ref' in node) {
+                if (node.ref > deletedId) {
+                    node.ref -= deletedId;
+                }
+            }
+            else if (node.type == 'area' && 'area' in node) {
+                if (node.area > deletedId) {
+                    node.area -= deletedId;
+                }
+            }
+            else if (node.type == 'group') workspaceReader(node.children);
+        })
+    } 
+    workspaceReader(world.serverOrLocalService.workspaceHierarchy);
+    // update welds
+    world.serverOrLocalService.mapServerModelsService.forEach((v, index) => {
+        v.weldedTo -= (v.weldedTo > deletedId ? deletedId : 0);
+    })
 }
 
 world.serverOrLocalService.importJson(fs.readFileSync(fileToLoad, "utf-8"));
@@ -921,10 +1064,11 @@ wss.on("connection", (ws) => {
     let p = new mapServerModel();
     p.basePosition = [0,0,0];
     p.baseSize = [1,2,1];
-    p.color = [Math.random(),Math.random(),Math.random()];
+    let colora = [Math.random(),Math.random(),Math.random()];
+    p.color = colora;
     world.serverOrLocalService.mapServerModelsService.push(p);
     ws.playerId = id;
-    ws.elementClicks = [];
+    ws.elementClicks = []
 
     // enviar estado inicial
     ws.send(JSON.stringify({
@@ -956,11 +1100,8 @@ wss.on("connection", (ws) => {
 
             if (data.yawPitch) {
                 let [ yaw, pitch ] = data.yawPitch;
-                p.baseRotation = [
-                    0,
-                    yaw,
-                    0
-                ];
+                world.serverOrLocalService.mapServerModelsService[id].baseRotation = [0,yaw,0];
+                //world.serverOrLocalService.mapServerModelsService.rotate(id, 0, yaw, 0);
             }
             const yaw = p.baseRotation[1];
 
@@ -1035,19 +1176,21 @@ wss.on("connection", (ws) => {
             );
         })();
 
-        // 🔥 IMPORTANTE ORDEN
-        world.serverOrLocalService.mapServerModelsService.splice(id, 1);
-
-        updateDeletation(id); // ← aquí notificas a todos
+        updateDeletation(ws.playerId, 1);
+        serverOrLocalServiceEnv.mapServerModelsService.splice(ws.playerId,1);
+        wss.clients.delete(ws);
     });
 });
 
+/** @param {any[]} models  */
 function checkCollisionModel(nextPos, model, models) {
     const [mx, my, mz] = nextPos;
     const [msx, msy, msz] = model.baseSize;
 
-    for (let other of models) {
+    for (let [other, index] of models.map((v,i) => [v,i])) {
         if (other === model) continue;
+        
+        if (world.areabled_parts.includes(index)) continue;
 
         const [x, y, z] = other.basePosition;
         const [sx, sy, sz] = other.baseSize;
@@ -1082,8 +1225,9 @@ function getCollisionModel(nextPos, model, models) {
     const [mx, my, mz] = nextPos;
     const [msx, msy, msz] = model.baseSize;
 
-    for (let other of models) {
+    for (let [other, index] of models.map((v,i) => [v,i])) {
         if (other === model) continue;
+        if (world.areabled_parts.includes(index)) continue;
 
         const [x, y, z] = other.basePosition;
         const [sx, sy, sz] = other.baseSize;
@@ -1211,6 +1355,8 @@ let globalScopeServer = {
 
 let lastTime = Date.now();
 
+updateWorkspace();
+
 setInterval(async () => {
     let now = Date.now();
     let dt = (now - lastTime) / 1000;
@@ -1234,10 +1380,7 @@ setInterval(async () => {
                 ServerToUpdate, ...globalScopeServer , client: createClient(client, id)
             }, lib);
         })(); } catch {
-            console.log(lib.errorAtCls('CharacterBody', 'The player who requested the server is absent.'))
-            updateDeletation(client.playerId);
-            serverOrLocalServiceEnv.mapServerModelsService.splice(client.playerId,1);
-            wss.clients.delete(client);
+            //console.log(lib.errorAtCls('CharacterBody', 'The player who requested the server is absent.'))
         }
         if (client.readyState === WebSocket.OPEN) {
             client.send(JSON.stringify({

@@ -18,6 +18,7 @@ export class mapServerModelsService {
                 newRotation[1] - oldRotation[1],
                 newRotation[2] - oldRotation[2]
             ];
+            let deltaRat = [-deltaRot[0], -deltaRot[1], -deltaRot[2]];
 
             parent.baseRotation = newRotation;
             let rotateX = (p, a) => {
@@ -53,23 +54,23 @@ export class mapServerModelsService {
             arrayModels.forEach((v, i) => {
                 if (v.weldedTo === id) {
                     let parentPos = parent.basePosition;
-                    let childPos = v.basePosition;
                     let relative = [
-                        childPos[0] - parentPos[0],
-                        childPos[1] - parentPos[1],
-                        childPos[2] - parentPos[2]
+                        v.basePosition[0] - parentPos[0],
+                        v.basePosition[1] - parentPos[1],
+                        v.basePosition[2] - parentPos[2]
                     ];
                     let rotated = relative;
-                    rotated = rotateX(rotated, deltaRot[0]);
-                    rotated = rotateY(rotated, deltaRot[1]);
-                    rotated = rotateZ(rotated, deltaRot[2]);
+                    rotated = rotateX(rotated, deltaRat[0]);
+                    rotated = rotateY(rotated, deltaRat[1]);
+                    rotated = rotateZ(rotated, deltaRat[2]);
                     let newPos = [
                         parentPos[0] + rotated[0],
                         parentPos[1] + rotated[1],
                         parentPos[2] + rotated[2]
                     ];
-
+                    
                     v.basePosition = newPos;
+                    arrayModels.move(i, ...v.basePosition);
                     v.baseRotation = [
                         v.baseRotation[0] + deltaRot[0],
                         v.baseRotation[1] + deltaRot[1],

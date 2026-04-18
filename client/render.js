@@ -513,6 +513,10 @@ export function syncWorld() {
     let usados = new Set();
 
     models.forEach((m, i) => {
+        if (state.world.areabled_parts.includes(i)) {
+            return
+        }
+
         let id = "model_" + i;
         usados.add(id);
 
