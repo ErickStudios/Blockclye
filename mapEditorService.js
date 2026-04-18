@@ -164,12 +164,16 @@ window.startApp = () => {
             else if (node.type == "propiety") {
                 icon.src = "./Icons/serverOrLocalServiceExplorer/PropietyAditionalIcon.svg";
             } else {
-                icon.src = "./Icons/serverOrLocalServiceExplorer/Part3DIcon.svg";
+                if (node.type == "part" && serverOrLocalServiceEnv.mapServerModelsService[node.ref].isStatic) 
+                    icon.src = "./Icons/serverOrLocalServiceExplorer/StaticPart3DIcon.svg";
+                else 
+                    icon.src = "./Icons/serverOrLocalServiceExplorer/Part3DIcon.svg";
             }
             const label = document.createElement("span");
             label.textContent = node.name;
 
             if (node.type === "part") {
+                
                 label.onclick = () => {
                     if (selectMode == AppLib.OperationOfManipule.weldObject)
                         serverOrLocalServiceEnv.mapServerModelsService[selectedModelIndex].weldedTo = node.ref;
@@ -388,8 +392,24 @@ window.startApp = () => {
             renderWorkspace(workspaceHierarchy, workspace);
         }
 
-        const addRigidPart = document.createElement("div"); addRigidPart.textContent = "New Rigid Part";
-        addRigidPart.onclick = () => {
+        const newMenu = document.createElement("div");
+        
+        let creatingThing = (name, icon, click) => {
+            const addRigidPart = document.createElement("div"); 
+            addRigidPart.style.display = 'flex';
+            let icona = document.createElement("img");
+            icona.src = icon;
+            icona.width = 20;
+            icona.height = 20;
+            addRigidPart.appendChild(icona);
+            let text = document.createElement("p");
+            text.textContent = name;
+            addRigidPart.appendChild(text);
+            addRigidPart.onclick = () => click();
+            return addRigidPart
+        }
+
+        const addRigidPart = creatingThing("RigidPart", "./Icons/serverOrLocalServiceExplorer/Part3DIcon.svg", () => {
             let ModelAdd = new mapServerModel();
             ModelAdd.basePosition = [camera.position.x,camera.position.y - 2,camera.position.z - 2];
             ModelAdd.color = [0, 1, 0];
@@ -397,10 +417,9 @@ window.startApp = () => {
 
             modeladd();
             menu.remove();
-        };
+        })
 
-        const addStaticPart = document.createElement("div"); addStaticPart.textContent = "New Static Part";
-        addStaticPart.onclick = () => {
+        const addStaticPart = creatingThing("StaticPart", "./Icons/serverOrLocalServiceExplorer/StaticPart3DIcon.svg", () => {
             let ModelAdd = new mapServerModel();
             ModelAdd.basePosition = [camera.position.x,camera.position.y - 2,camera.position.z - 2];
             ModelAdd.color = [0, 1, 0];
@@ -409,19 +428,15 @@ window.startApp = () => {
 
             modeladd();
             menu.remove();
-        };
+        })
 
-        const addGroup = document.createElement("div");
-        addGroup.textContent = "New Group";
-        addGroup.onclick = () => {
+        const addGroup = creatingThing("Group", "./Icons/serverOrLocalServiceExplorer/Base3DIcon.svg", () => {
             workspaceHierarchy.push(createGroup());
             menu.remove();
             renderWorkspace(workspaceHierarchy, workspace);
-        };
+        })
 
-        const addPropiety = document.createElement("div");
-        addPropiety.textContent = "New Propiety";
-        addPropiety.onclick = () => {
+        const addPropiety = creatingThing("Propiety", "./Icons/serverOrLocalServiceExplorer/PropietyAditionalIcon.svg", () => {
             workspaceHierarchy.push({
                 type: 'propiety',
                 name: 'propiety',
@@ -429,12 +444,14 @@ window.startApp = () => {
             });
             menu.remove();
             renderWorkspace(workspaceHierarchy, workspace);
-        };
+        })
 
-        menu.appendChild(addRigidPart);
-        menu.appendChild(addStaticPart);
-        menu.appendChild(addGroup);
-        menu.appendChild(addPropiety);
+        newMenu.appendChild(addRigidPart);
+        newMenu.appendChild(addStaticPart);
+        newMenu.appendChild(addGroup);
+        newMenu.appendChild(addPropiety);
+
+        menu.appendChild(newMenu);
 
         document.body.appendChild(menu);
 
@@ -496,8 +513,12 @@ window.startApp = () => {
             });
 
             let updateSyntaxHighlight = /** @param {string} code */ (code) => {
-                let vars = [...code.matchAll(/\bclass\s+(\w+)/g)].map(v => v[1]);
-                vars = [...vars, ...code.matchAll(/\bclassfunc\s+(\w+)/g)].map(v => v[1]);
+                let vars = [
+                    ...[...code.matchAll(/\bclass\s+(\w+)/g)].map(v => v[1]),
+                    ...[...code.matchAll(/\bclassfunc\s+(\w+)/g)].map(v => v[1]),
+                    ...[...code.matchAll(/\binterface\s+(\w+)/g)].map(v => v[1])
+                ];
+                console.log(vars)
                 let objects = [...code.matchAll(/\bvar\b\s+(\w+)\s+=\s+ServerToInit.virtualWorkspace.importScene\(/g)].map(v => v[1]);
                 let objectsInstancied = [...code.matchAll(/\bvar\b\s+(\w+)\s+=\s+ServerToInit.virtualWorkspace.addChild\(/g)].map(v => v[1]);
                 let instancies = [];
@@ -511,7 +532,7 @@ window.startApp = () => {
                         o.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
                     );
                     let objectGroup = `\\b(${safeObjects.join("|")})\\b`;
-                    if (matches.length > 0) instancies = [[objectGroup, "entity.scene.factory"]];
+                    if (matches.length > 0) instancies = [[new RegExp(objectGroup), "entity.scene.factory"]];
                 }
 
                 let dynamicRule = [];
@@ -522,7 +543,8 @@ window.startApp = () => {
                 }
 
                 if (vars.length > 0) {
-                    let dynamicRegex = new RegExp(`\\b(${vars.join("|")})\\b`);
+                    let safeVars = vars.map(v => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+                    let dynamicRegex = new RegExp(`\\b(${safeVars.join("|")})\\b`);
                     dynamicRule.push([dynamicRegex, "entity.class.user"]);
                 }
 
@@ -537,14 +559,15 @@ window.startApp = () => {
                             [/\/\/.*/, "comment"],
                             [/"[^"]*"/, "entity.flat.string"],
                             [/\b\d+\b/, "entity.flat.number"],
-                            [/\b(extends|class|return|classfunc|var|func|if|else)\b/, "keyword"],
+                            [/\b(extends|class|interface|return|classfunc|var|func|if|else)\b/, "keyword"],
                             [/\b(SimpleBlk|Group|Vector3|SerializableObject|Color3|Vector2|ButtonStyles|UiProximation|TextAlign|SimpleRectangle|SimpleTextBlks|SimpleButton)\b/, "entity.class.builtin"],
                             ...dynamicRule,
                             ...instancies,
-                            [/\b(Array|InternalDocsStrictEnum|Boolean|String|Math|Object)\b/, "entity.class.lang"],
+                            [/\b(Array|InternalDocsStrictEnum|Boolean|String|Math|Object|string|number)\b/, "entity.class.lang"],
                             [/\b(print)\b/, "entity.functions"],
                             [/\b\w+\b(?=\()/, "entity.functions"],
-                            [/\w+/, "entity.variables.user"]
+                            [/\w+/, "entity.variables.user"],
+                            [/./, "entity.variables.user"]
                         ]
                     }
                 });

@@ -717,7 +717,7 @@ let createRuntimeLib = () => {
     ```
      */
     lib.SimpleButton = {type: 'func', func: (params) => {
-        let heredated = lib.SimpleRectangle.func(params.slice(0, params.length >= 4 ? 4 : params.length));
+        let heredated = lib.SimpleRectangle.func(params.length == 0 ? [] : params.slice(0, params.length >= 4 ? 4 : params.length));
         heredated.guiUdim = 'SimpleButton';
         heredated.text = lib.SimpleTextBlks.func([]);
         heredated.styleButton = 'Clasic';
@@ -899,6 +899,12 @@ function createClient(client, id) {
                     },
                     click: {
                         type: 'func', func: async (params) => {
+                            let id = client.elementClicks.pop();
+                            client.elementClicks.push(id);
+                            if (id == params[0]) {
+                                client.elementClicks.pop();
+                                return true;
+                            }
                             return false;
                         }
                     }
@@ -918,6 +924,7 @@ wss.on("connection", (ws) => {
     p.color = [Math.random(),Math.random(),Math.random()];
     world.serverOrLocalService.mapServerModelsService.push(p);
     ws.playerId = id;
+    ws.elementClicks = [];
 
     // enviar estado inicial
     ws.send(JSON.stringify({
@@ -933,6 +940,12 @@ wss.on("connection", (ws) => {
             if (resolve) {
                 resolve(data.data);
                 pendingRequests.delete(data.requestId);
+            }
+        }
+        if (data.type === 'event') {
+            let event = data;
+            if (event.ev === 'ui.click.player') {
+                ws.elementClicks.push(event.element);
             }
         }
         if (data.type === "input") {

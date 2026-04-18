@@ -64,3 +64,12 @@ export function sendInput(input) {
         ...input
     }));
 }
+
+export function sendEvent(event) {
+    if (!socket) return;
+
+    socket.send(JSON.stringify({
+        type: "event",
+        ...event
+    }));
+}

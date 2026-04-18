@@ -1,6 +1,6 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js";
 import { state } from "./state.js";
-import { sendInput } from "./network.js"
+import { sendEvent, sendInput } from "./network.js"
 
 export let keys = {};
 
@@ -426,6 +426,17 @@ export function initRender() {
     drwm.drawImage = (img, x, y, w, h) => {
         drmwgui.drawImage(img, x, y, w, h);
     }
+    container.addEventListener("mousedown", (ev) => {
+        if (!window.interactingWithGui) return;
+        PlayerUI.forEach((u, i) => {
+            if (isInside({ x: mouseX, y: mouseY }, PlayerGUI({renderOptions: { renderElement: u }}))) {
+                sendEvent({
+                    'ev': 'ui.click.player',
+                    'element': i
+                })
+            }
+            });
+    })
     PlayerUI.push({
         basePosition: ["1%", "1%"],
         baseSize: ["30px", "30px"],
@@ -600,6 +611,7 @@ export function renderLoop() {
     drmwgui.clearRect(0, 0, drmwgui.canvas.width, drmwgui.canvas.height);
 
     PlayerUI.forEach(u => {
+        console.log(({renderOptions: { renderElement: u }}))
         renderElement(PlayerGUI({renderOptions: { renderElement: u }}), { x: mouseX, y: mouseY });
     });
 
