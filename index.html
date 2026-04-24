@@ -21,8 +21,8 @@
         }
 
         .btn {
-            padding: 10px 20px;
-            margin: 10px;
+            padding: 5px 10px;
+            margin: 5px;
             background-color: #30c49d;
             font-size: small;
             color: white;
@@ -67,6 +67,27 @@
         <a href="mapEditorService.html" class="btn">mapEditorService</a>
         <!--[LOCAL] Go To The Player Client App, The 'clientService'-->
         <a href="clientService.html" class="btn">clientService</a>
+    </div>
+    <!--[LOCAL] Insitation-->
+    <h2>You Want To Put Online Your Server In Local Lan?</h2>
+    <!--[LOCAL] Insitation-->
+    <div class="container">
+        <p style="padding: 5px 10px;">Put Your Server Online Now!</p>
+        <input hidden type="file" id="fileInputServer">
+        <script type="module">
+            const input = document.getElementById('fileInputServer');
+
+            input.onchange = async () => {
+            const file = input.files[0];
+            if (!file) return;
+
+            const content = await file.text();
+            console.log("abc")
+            window.blockclye.initServer(content);
+            };
+        </script>
+        <!--[LOCAL] Up Your Server-->
+        <button href="mapEditorService.html" class="btn" onclick="document.getElementById('fileInputServer').click()">serverOrLocalServiceCreator</button>
     </div>
 </body>
 

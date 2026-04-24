@@ -11,7 +11,7 @@ body {
 
 }
 #editorContainer {
-  width: 100%;
+  width: 85%;
   height: 100vh;
   display: none;
 }
@@ -23,18 +23,24 @@ body {
 
 #game {
   flex: 1;
-  width: 100%;
+  width: 85%;
   height: 100%;
   display: block;
   background: #222223;
 }
 
 #workspace {
-  width: 250px;
+  width: 15%;
   background: #1b1b1c;
   border-left: 1px solid #333;
   overflow-y: auto;
+  overflow-x: auto;
   padding: 8px;
+  white-space: nowrap;
+}
+
+#workspace > * {
+  min-width: 10;
 }
 
 /* items del workspace */
@@ -42,10 +48,10 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px;
+  padding: 1px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 10px;
 }
 
 .workspace-item:hover {
@@ -57,8 +63,8 @@ body {
 }
 
 .workspace-item img {
-  width: 14px;
-  height: 14px;
+  width: 9px;
+  height: 9px;
 }
 p {
     color: #d4d4d4;

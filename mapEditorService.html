@@ -7,6 +7,44 @@
   <title>Blockclye Map Creator</title>
   <!--[STYLE] Style Sheet-->
   <link rel="stylesheet" href="style.css">
+  <style>
+    .codicon {
+        width: 16px !important;
+        height: 16px !important;
+        background-size: 16px 16px !important;
+    }
+    .codicon-symbol-snippet::before {
+        display: none !important;
+    }
+    .monaco-list-row[aria-label*="vector"] .codicon {
+        background: url('/Icons/serverOrLocalServiceExplorer/VectorIcon.svg') no-repeat center;
+        size: 2px;
+    }
+    .monaco-list-row[aria-label*="area"] .codicon {
+        background: url('/Icons/serverOrLocalServiceExplorer/Area3DIcon.svg') no-repeat center;
+        size: 2px;
+    }
+    .monaco-list-row[aria-label*="sblk"] .codicon {
+        background: url('/Icons/serverOrLocalServiceExplorer/Part3DIcon.svg') no-repeat center;
+        size: 2px;
+    }
+    .monaco-list-row[aria-label*="rpart"] .codicon {
+        background: url('/Icons/serverOrLocalServiceExplorer/Part3DIcon.svg') no-repeat center;
+        size: 2px;
+    }
+    .monaco-list-row[aria-label*="spart"] .codicon {
+        background: url('/Icons/serverOrLocalServiceExplorer/StaticPart3DIcon.svg') no-repeat center;
+        size: 2px;
+    }
+    .monaco-list-row[aria-label*="type"] .codicon {
+        background: url('/Icons/serverOrLocalServiceExplorer/TypeIcon.svg') no-repeat center;
+        size: 2px;
+    }
+    .monaco-list-row[aria-label*="struct"] .codicon {
+        background: url('/Icons/serverOrLocalServiceExplorer/StructurePilarIcon.svg') no-repeat center;
+        size: 2px;
+    }
+  </style>
 </head>
 <body>
   <!--[CLIENT] Includes The JSZip-->

@@ -14,6 +14,10 @@ var CSTypeChecker;
     return typeof value === "object" && value !== null && "type" in value && value.type === "obj" && "object" in value;
   }
   CSTypeChecker2.isCSObject = isCSObject;
+  function isCSInterface(value) {
+    return typeof value === "object" && value !== null && "type" in value && value.type === "interface" && "props" in value && typeof value.props === "object";
+  }
+  CSTypeChecker2.isCSInterface = isCSInterface;
   function isCSFunction(value) {
     return typeof value === "object" && value !== null && "type" in value && value.type === "func" && "func" in value;
   }
@@ -21,6 +25,9 @@ var CSTypeChecker;
 })(CSTypeChecker || (CSTypeChecker = {}));
 function interfaceError(name, msg) {
   return `at \x1B[38;5;161minterface\x1B[0m \x1B[38;5;194m${name}\x1B[0m: ${msg}`;
+}
+function interfaceRep(name, msg = "") {
+  return `\x1B[38;5;161minterface\x1B[0m \x1B[38;5;194m${name}\x1B[0m${msg}`;
 }
 function createEnum(name, allowedValues) {
   return {
@@ -153,11 +160,13 @@ function parse(tokens) {
     if (peek() && peek().value === "extends") {
       consume();
       if (peek() && peek().value === "(") {
+        consume();
         while (peek() && peek().value !== ")") {
           expectatives.push(consume().value);
           if (peek()?.value === ",")
             consume();
         }
+        consume();
       } else {
         expectatives.push(consume().value);
       }
@@ -311,6 +320,21 @@ function parse(tokens) {
   function parseInterface() {
     consume();
     let name = consume().value;
+    let expectatives = [];
+    if (peek() && peek().value === "extends") {
+      consume();
+      if (peek() && peek().value === "(") {
+        consume();
+        while (peek() && peek().value !== ")") {
+          expectatives.push(consume().value);
+          if (peek()?.value === ",")
+            consume();
+        }
+        consume();
+      } else {
+        expectatives.push(consume().value);
+      }
+    }
     expect("{");
     let props = {};
     while (peek() && peek().value !== "}") {
@@ -318,6 +342,8 @@ function parse(tokens) {
       let propName = consume().value;
       expect(":");
       let typeName = consume().value;
+      if (typeof typeName === "string")
+        typeName = typeName == "String" || typeName == "Number" || typeName == "Boolean" ? typeName.toLowerCase() : typeName;
       expect(";");
       props[propName] = typeName;
     }
@@ -325,7 +351,8 @@ function parse(tokens) {
     return {
       type: "Interface",
       name,
-      props
+      props,
+      expectatives
     };
   }
   function parseStatement() {
@@ -440,8 +467,15 @@ async function run(ast, globalSymbolsP, makeOne = false) {
           if (ex instanceof ReturnException) {
             let result = ex.value;
             if ("expectatives" in callee && Array.isArray(callee.expectatives) && callee.expectatives.length > 0) {
+              if (CSTypeChecker.isCSObject(result)) {
+                result.classesHeredated = [];
+                result.interfaces = [];
+              }
               for (let ifaceName of callee.expectatives) {
                 let iface = globalSymbols[ifaceName];
+                if (CSTypeChecker.isCSObject(result)) {
+                  result.interfaces?.push(iface);
+                }
                 if (typeof iface !== "object")
                   throw new Error("The interface is not a object");
                 if (!iface || iface.type !== "interface") {
@@ -491,14 +525,21 @@ async function run(ast, globalSymbolsP, makeOne = false) {
       if (stmt.type === "ExprStmt")
         await evalExpr(stmt.expr, scope);
       if (stmt.type === "Return") {
-        let value = stmt.value ? await evalExpr(stmt.value, scope) : null;
+        let value = stmt.value ? await evalExpr(stmt.value, scope) : 0;
         throw new ReturnException(value);
       }
       if (stmt.type === "Interface") {
-        globalSymbols[stmt.name] = {
+        let inter = {
           type: "interface",
-          props: stmt.props
+          props: stmt.props,
+          name: stmt.name
         };
+        for (let element of stmt.expectatives) {
+          if (CSTypeChecker.isCSInterface(globalSymbols[element]))
+            Object.assign(inter.props, globalSymbols[element].props);
+        }
+        Object.assign(inter.props, stmt.props);
+        globalSymbols[stmt.name] = inter;
       }
       if (stmt.type === "If") {
         let cond = await evalExpr(stmt.condition, scope);
@@ -548,130 +589,90 @@ async function run(ast, globalSymbolsP, makeOne = false) {
 }
 function exportLibrary(isGlobal = false) {
   let globalSymbols = {};
-  globalSymbols.createEnum = createEnum;
-  globalSymbols.errorAtCls = errorAtCls;
   globalSymbols.true = true;
   globalSymbols.false = false;
-  globalSymbols.Array = {
-    type: "func",
-    func: (params) => ({
-      type: "array",
-      items: params
-    })
-  };
-  globalSymbols.InternalDocsStrictEnum = {
-    type: "func",
-    func: (params) => {
-      if (typeof params[0] !== "string")
-        throw new TypeError(errorAtCls("InternalDocsStrictEnum", "error on create the enum"));
-      let enumName = params[0];
-      if (!CSTypeChecker.isCSArray(params[1]))
-        throw new TypeError(errorAtCls("InternalDocsStrictEnum", "error on create the enum"));
-      let allowedValues = params[1].items;
-      return createEnum(enumName, allowedValues);
-    }
-  };
-  globalSymbols.Boolean = createEnum("Boolean", [true, false]);
-  globalSymbols.print = {
-    type: "func",
-    func: (params) => {
-      console.log(...params);
-    }
-  };
-  globalSymbols.Math = {
-    type: "obj",
-    object: {
-      add: {
-        type: "func",
-        func: (params) => {
-          const a = params[0];
-          const b = params[1];
-          if (typeof a === "number" && typeof b === "number") {
-            return a + b;
-          }
-          if (typeof a === "string" && typeof b === "string") {
-            return a + b;
-          }
-          throw new TypeError("Math.add expects number or string");
-        }
-      },
-      sub: {
-        type: "func",
-        func: (params) => {
-          const a = params[0];
-          const b = params[1];
-          if (typeof a === "number" && typeof b === "number") {
-            return a - b;
-          }
-          throw new TypeError("Math.sub expects number");
-        }
-      },
-      div: {
-        type: "func",
-        func: (params) => {
-          const a = params[0];
-          const b = params[1];
-          if (typeof a === "number" && typeof b === "number") {
-            return a / b;
-          }
-          throw new TypeError("Math.div expects number");
-        }
-      },
-      mul: {
-        type: "func",
-        func: (params) => {
-          const a = params[0];
-          const b = params[1];
-          if (typeof a === "number" && typeof b === "number") {
-            return a * b;
-          }
-          throw new TypeError("Math.mul expects number");
-        }
+  globalSymbols.Array = { type: "func", func: (params) => ({
+    type: "array",
+    items: params
+  }) };
+  globalSymbols.InternalDocsStrictEnum = { type: "func", func: (params) => {
+    if (typeof params[0] !== "string")
+      throw new TypeError(errorAtCls("InternalDocsStrictEnum", "error on create the enum"));
+    let enumName = params[0];
+    if (!CSTypeChecker.isCSArray(params[1]))
+      throw new TypeError(errorAtCls("InternalDocsStrictEnum", "error on create the enum"));
+    let allowedValues = params[1].items;
+    return createEnum(enumName, allowedValues);
+  } };
+  globalSymbols.repr = { type: "func", func: (params) => {
+    let solveToString = (thing, re = false, tabs = 0) => {
+      let tabulated = "   ".repeat(tabs);
+      if (Array.isArray(thing)) {
+        return "[" + thing.map((v) => solveToString(v)).join(",") + "]";
       }
-    }
-  };
-  globalSymbols.String = {
-    type: "func",
-    func: (params) => {
-      return String(params[0]);
-    }
-  };
-  globalSymbols.exportToGlobal = {
-    type: "func",
-    func: (params) => {
-      let exportAs = params[0];
-      let exportValue = params[1];
-      if (typeof exportAs !== "string")
-        throw new SyntaxError(errorAtCls("InternalNamespace", "trying to get a invalid var name"));
-      globalSymbols[exportAs] = exportValue;
-    }
-  };
-  globalSymbols.notDefined = {
-    type: "func",
-    func: (params) => {
-      if (typeof params[0] !== "string")
-        throw new SyntaxError(errorAtCls("InternalNamespace", "trying to get a invalid var name"));
-      let exportAs = params[0];
-      return !(exportAs in globalSymbols);
-    }
-  };
-  globalSymbols.undef = {
-    type: "func",
-    func: (params) => {
-      if (typeof params[0] !== "string")
-        throw new SyntaxError(errorAtCls("InternalNamespace", "trying to get a invalid var name"));
-      delete globalSymbols[params[0]];
-    }
-  };
-  globalSymbols.getVar = {
-    type: "func",
-    func: (params) => {
-      let exportAs = params[0];
-      if (typeof exportAs !== "string")
-        throw new SyntaxError(errorAtCls("InternalNamespace", "trying to get a invalid var name"));
-      return globalSymbols[exportAs];
-    }
-  };
+      if (CSTypeChecker.isCSArray(thing)) {
+        return solveToString(thing.items);
+      }
+      if (CSTypeChecker.isCSInterface(thing)) {
+        return interfaceRep(thing.name || "anonymus");
+      }
+      if (CSTypeChecker.isCSFunction(thing)) {
+        return "\x1B[38;5;161mfunc\x1B[0m(...)";
+      }
+      if (CSTypeChecker.isCSObject(thing)) {
+        let description = "\x1B[38;5;194mObject\x1B[0m {\n";
+        for (const K in thing.object) {
+          description += tabulated + "   " + K + ": " + solveToString(thing.object[K], true, tabs++) + ";\n";
+        }
+        description += tabulated + "}";
+        return description;
+      }
+      return (typeof thing === "string" && re ? "\x1B[32m'" : "") + String(thing) + (typeof thing === "string" && re ? "'\x1B[0m" : "");
+    };
+    return solveToString(params[0]);
+  } };
+  globalSymbols.print = { type: "func", func: (params) => {
+    console.log(...params.map((v) => globalSymbols.repr.func([v])));
+    return 0;
+  } };
+  globalSymbols.Math = { type: "obj", object: {
+    add: { type: "func", func: (params) => {
+      const [a, b] = params;
+      if (typeof a === "number" && typeof b === "number")
+        return a + b;
+      if (typeof a === "string" && typeof b === "string")
+        return a + b;
+      throw new TypeError("Math.add expects number or string");
+    } },
+    sub: { type: "func", func: (params) => {
+      const [a, b] = params;
+      if (typeof a === "number" && typeof b === "number")
+        return a - b;
+      throw new TypeError("Math.sub expects number");
+    } },
+    div: { type: "func", func: (params) => {
+      const [a, b] = params;
+      if (typeof a === "number" && typeof b === "number")
+        return a / b;
+      throw new TypeError("Math.div expects number");
+    } },
+    mul: { type: "func", func: (params) => {
+      const [a, b] = params;
+      if (typeof a === "number" && typeof b === "number")
+        return a * b;
+      throw new TypeError("Math.mul expects number");
+    } }
+  } };
+  globalSymbols.Boolean = createEnum("Boolean", [true, false]);
+  globalSymbols.boolean = globalSymbols.Boolean;
+  globalSymbols.String = { type: "func", func: (params) => {
+    return String(params[0]);
+  } };
+  globalSymbols.string = globalSymbols.String;
+  globalSymbols.Number = { type: "func", func: (params) => {
+    return Number(params[0]);
+  } };
+  globalSymbols.number = globalSymbols.Number;
   globalSymbols.Object = {
     type: "func",
     func: (params) => {
@@ -696,10 +697,54 @@ function exportLibrary(isGlobal = false) {
       return object;
     }
   };
+  globalSymbols.exportToGlobal = { type: "func", func: (params) => {
+    let exportAs = params[0];
+    let exportValue = params[1];
+    if (typeof exportAs !== "string")
+      throw new SyntaxError(errorAtCls("InternalNamespace", "trying to get a invalid var name"));
+    globalSymbols[exportAs] = exportValue;
+    return 0;
+  } };
+  globalSymbols.notDefined = { type: "func", func: (params) => {
+    if (typeof params[0] !== "string")
+      throw new SyntaxError(errorAtCls("InternalNamespace", "trying to get a invalid var name"));
+    let exportAs = params[0];
+    return !(exportAs in globalSymbols);
+  } };
+  globalSymbols.undef = { type: "func", func: (params) => {
+    if (typeof params[0] !== "string")
+      throw new SyntaxError(errorAtCls("InternalNamespace", "trying to get a invalid var name"));
+    delete globalSymbols[params[0]];
+    return 0;
+  } };
+  globalSymbols.getVar = { type: "func", func: (params) => {
+    let exportAs = params[0];
+    if (typeof exportAs !== "string")
+      throw new SyntaxError(errorAtCls("InternalNamespace", "trying to get a invalid var name"));
+    return globalSymbols[exportAs];
+  } };
+  globalSymbols.instanceof = { type: "func", func: (params) => {
+    let [target, source] = params;
+    if (!CSTypeChecker.isCSObject(target))
+      return false;
+    if (Array.isArray(target.interfaces)) {
+      for (let iface of target.interfaces) {
+        if (CSTypeChecker.isCSInterface(iface) && CSTypeChecker.isCSInterface(source) && iface.name === source.name)
+          return true;
+      }
+    }
+    return false;
+  } };
   return globalSymbols;
 }
 export {
+  CSTypeChecker,
+  ReturnException,
+  createEnum,
+  errorAtCls,
   exportLibrary,
+  interfaceError,
+  interfaceRep,
   parse,
   run,
   tokenize

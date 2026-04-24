@@ -80,7 +80,8 @@ export class mapServerModelsService {
                 }
             });
         };
-        arrayModels.move = (id, x, y, z) => {
+        arrayModels.move = (id, x, y, z, ignoreChildY=false) => {
+
             let blockToMove = id;
             arrayModels.forEach((v, i, arr) => {
                 if (v.weldedTo == blockToMove) {
@@ -97,8 +98,7 @@ export class mapServerModelsService {
                     vectorCurr[0] += moveStepsVector[0];
                     vectorCurr[1] += moveStepsVector[1];
                     vectorCurr[2] += moveStepsVector[2];
-                    arrayModels[i].basePosition = vectorCurr;
-                    arrayModels.move(i, vectorCurr[0], vectorCurr[1], vectorCurr[2]);
+                    arrayModels.move(i, vectorCurr[0], ignoreChildY ? arrayModels[i].basePosition[1] : vectorCurr[1], vectorCurr[2]);
                 };
             });
             arrayModels[id].basePosition = [x, y, z];

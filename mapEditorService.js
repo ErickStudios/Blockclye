@@ -1,6 +1,6 @@
 /** [GLOBAL] Global Importations */
 import { AppLib } from "./lib/app.js"
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js";
+import * as THREE from "./three.js";
 import { serverOrLocalService, mapServerModel } from "./core/serverOrLocalService.js"
 /** [GLOBAL] Fundamental Variables */
 const canvas = document.getElementById("game");
@@ -563,12 +563,15 @@ window.startApp = () => {
                 automaticLayout: true
             });
 
-            let updateSyntaxHighlight = /** @param {string} code */ (code) => {
+            let updateSyntaxHighlight = (code, ona=false) => {
                 let vars = [
                     ...[...code.matchAll(/\bclass\s+(\w+)/g)].map(v => v[1]),
                     ...[...code.matchAll(/\bclassfunc\s+(\w+)/g)].map(v => v[1]),
                     ...[...code.matchAll(/\binterface\s+(\w+)/g)].map(v => v[1])
                 ];
+                let interfaces = [...code.matchAll(/\binterface\s+(\w+)/g)].map(v => v[1]);
+                let classesfuncs = [...code.matchAll(/\bclassfunc\s+(\w+)/g)].map(v => v[1]);
+
                 console.log(vars)
                 let objects = [...code.matchAll(/\bvar\b\s+(\w+)\s+=\s+ServerToInit.virtualWorkspace.importScene\(/g)].map(v => v[1]);
                 let objectsInstancied = [...code.matchAll(/\bvar\b\s+(\w+)\s+=\s+ServerToInit.virtualWorkspace.addChild\(/g)].map(v => v[1]);
@@ -604,6 +607,14 @@ window.startApp = () => {
                     dynamicRule.push([dynamicRegex, "entity.scene.prefactory"]);
                 }
 
+                if (ona) return {
+                    objects,
+                    vars,
+                    objectsInstancied,
+                    interfaces,
+                    classesfuncs
+                }
+
                 monaco.languages.setMonarchTokensProvider('myAsm', {
                     tokenizer: {
                         root: [
@@ -611,7 +622,7 @@ window.startApp = () => {
                             [/"[^"]*"/, "entity.flat.string"],
                             [/\b\d+\b/, "entity.flat.number"],
                             [/\b(extends|class|interface|return|classfunc|var|func|if|else)\b/, "keyword"],
-                            [/\b(SimpleBlk|Group|Vector3|SerializableObject|Color3|Vector2|ButtonStyles|UiProximation|TextAlign|SimpleRectangle|SimpleTextBlks|SimpleButton)\b/, "entity.class.builtin"],
+                            [/\b(SimpleBlk|RigidPart|StaticPart|Group|Vector3|SerializableObject|Color3|Vector2|ButtonStyles|UiProximation|TextAlign|SimpleRectangle|SimpleTextBlks|SimpleButton)\b/, "entity.class.builtin"],
                             ...dynamicRule,
                             ...instancies,
                             [/\b(Array|InternalDocsStrictEnum|Boolean|String|Math|Object|string|number)\b/, "entity.class.lang"],
@@ -623,6 +634,47 @@ window.startApp = () => {
                     }
                 });
             }
+
+            monaco.languages.registerCompletionItemProvider('myAsm', {
+                provideCompletionItems: function(model, position) {
+
+                    let fastMake = (l, d, dep=false) => {
+                        return {
+                                label: {
+                                    label: l,
+                                    description: d
+                                },kind: monaco.languages.CompletionItemKind.Snippet,
+                                insertText: [l].join('\n'),
+                                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                documentation: '',
+                                tags: dep ? [monaco.languages.CompletionItemTag.Deprecated] : []
+                            }
+                    }
+
+                    return {
+                        suggestions: [
+                            fastMake('Vector2', 'vector'),
+                            fastMake('Vector3', 'vector'),
+                            //fastMake('Area', 'area'),
+                            //fastMake('StaticArea', 'area'),
+                            //fastMake('RigidArea', 'area'),
+                            fastMake('SimpleBlk', 'sblk',true),
+                            fastMake('RigidPart', 'rpart'),
+                            fastMake('StaticPart', 'spart'),
+                            fastMake('number', 'type'),
+                            fastMake('string', 'type'),
+                            fastMake('boolean', 'type'),
+                            fastMake('Number', 'type', true),
+                            fastMake('String', 'type', true),
+                            fastMake('Boolean', 'type', true),
+                            ...(updateSyntaxHighlight(editor.getValue(), true).objects.map(v => fastMake(v, "struct"))),
+                            ...(updateSyntaxHighlight(editor.getValue(), true).objectsInstancied.map(v => fastMake(v, "struct"))),
+                            ...(updateSyntaxHighlight(editor.getValue(), true).interfaces.map(v => fastMake(v, "type"))),
+                            ...(updateSyntaxHighlight(editor.getValue(), true).classesfuncs.map(v => fastMake(v, "struct"))),
+                        ]
+                    };
+                }
+            });
 
             editor.onDidChangeModelContent(() => {
                 let code = editor.getValue();
@@ -697,7 +749,7 @@ window.startApp = () => {
     };
     // [SERVER/LOCAL] Start 'mapServerScriptService'
     mapServerScriptServiceTools.Start.onclick = () => {
-        alert("for run your map please export your map and load it in the node.js 'serverOrLocalServiceCreator' application")
+        alert("for run your map please export your map and load it in node.js with the script 'serverOrLocalServiceCreator.js' and after of name of the script put the path to your map saved and open the clientService.html and put the server url (localhost or http) and click on 'Connect'")
     };
     // [SERVER/LOCAL] Saves The Editor Code Of The 'mapServerScriptService'
     mapServerScriptServiceTools.Save.onclick = () => {
@@ -723,6 +775,7 @@ window.startApp = () => {
         modeladd();
 
         let part = serverOrLocalServiceEnv.mapServerModelsService.length - 1;
+        console.log(part)
         Object.assign(serverOrLocalServiceEnv.mapServerModelsService[part], serverOrLocalServiceEnv.mapServerModelsService[selectedModelIndex]);
         renderWorkspace(workspaceHierarchy, workspace);
     };
