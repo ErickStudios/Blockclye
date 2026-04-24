@@ -9,7 +9,14 @@
   "build": {
     "appId": "com.blockclye.app",
     "productName": "Blockclye",
-    "files": ["**/*"],
+    "files": [
+      "**/*",
+      "!dist",
+      "!node_modules/.cache",
+      "!*.log",
+      "!temp",
+      "!payload.zip"
+    ],
     "icon": "icon.ico",
     "win": {
       "target": "portable"
