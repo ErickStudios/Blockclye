@@ -1,5 +1,9 @@
-const { app, BrowserWindow, Menu  } = require('electron');
-const path = require('path');
+import { app, BrowserWindow, Menu  } from 'electron';
+import { fileURLToPath } from 'node:url';
+import * as path from 'node:path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 function createWindow() {
   const win = new BrowserWindow({

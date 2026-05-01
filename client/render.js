@@ -1,4 +1,4 @@
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js";
+import * as THREE from "./three.js";
 import { state } from "./state.js";
 import { sendEvent, sendInput } from "./network.js"
 
@@ -451,7 +451,7 @@ export function initRender() {
             children: [],
             visible: true,
             anchor: [0.5,0.5],
-            image: "Icons/logo/BlockclyeIconNoText.svg",
+            image: "assets/BlockclyeIconNoText.svg",
             basePosition: ["5px", "5px"],
             baseSize: ["20px", "20px"],
         }],
@@ -465,7 +465,6 @@ export function initRender() {
     light2.position.set(-5, -10, -5);
     scene.add(light);
     scene.add(light2);
-    SVGElement
 
     container.addEventListener("click", () => {
         container.requestPointerLock();
@@ -513,7 +512,7 @@ export function syncWorld() {
     let usados = new Set();
 
     models.forEach((m, i) => {
-        if (state.world.areabled_parts.includes(i)) {
+        if (state.world.areabled_parts.includes(i) || state.world.ligtheable_parts.includes(i)) {
             return
         }
 
@@ -615,7 +614,6 @@ export function renderLoop() {
     drmwgui.clearRect(0, 0, drmwgui.canvas.width, drmwgui.canvas.height);
 
     PlayerUI.forEach(u => {
-        console.log(({renderOptions: { renderElement: u }}))
         renderElement(PlayerGUI({renderOptions: { renderElement: u }}), { x: mouseX, y: mouseY });
     });
 

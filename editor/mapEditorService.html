@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--[PAGE_DEC] Set Character Set To UTF-8-->
+  <meta charset="UTF-8">
+  <!--[PAGE_DEC] Page Title-->
+  <title>Blockclye Map Creator</title>
+  <!--[STYLE] Style Sheet-->
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .codicon {
+        width: 16px !important;
+        height: 16px !important;
+        background-size: 16px 16px !important;
+    }
+    .codicon-symbol-snippet::before {
+        display: none !important;
+    }
+    .monaco-list-row[aria-label*="vector"] .codicon {
+        background: url('/Icons/serverOrLocalServiceExplorer/VectorIcon.svg') no-repeat center;
+        size: 2px;
+    }
+    .monaco-list-row[aria-label*="area"] .codicon {
+        background: url('/Icons/serverOrLocalServiceExplorer/Area3DIcon.svg') no-repeat center;
+        size: 2px;
+    }
+    .monaco-list-row[aria-label*="sblk"] .codicon {
+        background: url('/Icons/serverOrLocalServiceExplorer/Part3DIcon.svg') no-repeat center;
+        size: 2px;
+    }
+    .monaco-list-row[aria-label*="rpart"] .codicon {
+        background: url('/Icons/serverOrLocalServiceExplorer/Part3DIcon.svg') no-repeat center;
+        size: 2px;
+    }
+    .monaco-list-row[aria-label*="spart"] .codicon {
+        background: url('/Icons/serverOrLocalServiceExplorer/StaticPart3DIcon.svg') no-repeat center;
+        size: 2px;
+    }
+    .monaco-list-row[aria-label*="type"] .codicon {
+        background: url('/Icons/serverOrLocalServiceExplorer/TypeIcon.svg') no-repeat center;
+        size: 2px;
+    }
+    .monaco-list-row[aria-label*="struct"] .codicon {
+        background: url('/Icons/serverOrLocalServiceExplorer/StructurePilarIcon.svg') no-repeat center;
+        size: 2px;
+    }
+  </style>
+</head>
+<body>
+  <!--[CLIENT] Includes The JSZip-->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <!--[CLIENT] Includes The Monaco Editor-->
+  <script src="./lib/min/vs/loader.js"></script>
+  <!--[CLIENT/LOCAL] User Interface-->
+  <div id="ui">
+    <!--[LOCAL] Image Of The Logo Of Blockclye-->
+    <div style="display: flex;">
+        <!--[LOCAL] Image Of The Blocks-->
+        <img src="Icons/logo/BlockclyeIconNoText.svg" width="20px", height="20px" style="left: 50%; right: 50%;"></img>
+        <!--[LOCAL] Text That Puts The Name Of The App-->
+        <a href="../index.html" style="color: azure; font-family: sans-serif;margin: 0; padding: 0;  text-decoration: none;">Blockclye</a>
+    </div>
+    <!--[SECTION_UI] 'serverOrLocalService' Tools-->
+    <div class="panel">
+        <!--[DECORATIVE] Descriptive Section Text-->
+        <p style="font-size: 10px;padding-bottom: 5px;">mapServerScriptService</p>
+        <!--[ORGANIZED] Buttons Container-->
+        <div class="buttons">
+            <!--[LOCAL] Saves The 'serverOrLocalService'-->
+            <button id="serverOrLocalService.Export"><img src="Icons/DownloadIcon.svg"><p>Export</p></button>
+            <!--[LOCAL] Loads A 'serverOrLocalService'-->
+            <button id="serverOrLocalService.Import"><img src="Icons/UploadIcon.svg"><p>Import</p></button>
+            <!--INTERNAL [LOCAL] Loads A 'serverOrLocalService'-->
+            <input type="file" id="serverOrLocalService.ImportInternal" accept=".json,.zip" style="display:none">
+        </div>
+    </div>
+    <!--[SECTION_UI] 'mapServerModelsService' And 'mapServerScriptService' Tools-->
+    <div class="panel">
+        <!--[DECORATIVE] Descriptive Section Text-->
+        <p style="font-size: 10px;padding-bottom: 5px;"></p>
+        <!--[ORGANIZED] Buttons Container-->
+        <div class="buttons">
+            <!--[SERVER/LOCAL] Duplicates A Part To 'mapServerModelsService'-->
+            <button id="mapServerModelsService.DuplicatePart"><img src="Icons/DuplicatePartIcon.svg"></button>
+            <!--[SERVER/LOCAL] Delete A Part To 'mapServerModelsService'-->
+            <button id="mapServerModelsService.DelPart"><img src="Icons/DeleteModelIcon.svg"></button>
+            <!--[SERVER/LOCAL] Selects A Part To 'mapServerModelsService'-->
+            <button id="mapServerModelsService.SelectPart"><img src="Icons/SelectModelIcon.svg"></button>
+            <!--[SERVER/LOCAL] Moves A Part To 'mapServerModelsService'-->
+            <button id="mapServerModelsService.MovePart"><img src="Icons/MoveModelIcon.svg"></button>
+            <!--[SERVER/LOCAL] Scales A Part To 'mapServerModelsService'-->
+            <button id="mapServerModelsService.ScalePart"><img src="Icons/ScaleObjectIcon.svg"></button>
+            <!--[SERVER/LOCAL] Rotates A Part To 'mapServerModelsService'-->
+            <button id="mapServerModelsService.RotateModel"><img src="Icons/RotateModelIcon.svg"></button>
+            <!--[SERVER/LOCAL] Welds A Part To 'mapServerModelsService'-->
+            <button id="mapServerModelsService.WeldModel"><img src="Icons/WeldIcon.svg"></button>
+        </div>
+        <!--[ORGANIZED] Buttons Container-->
+        <div class="buttons">
+            <!--[LOCAL] Edits Code Of 'mapServerScriptService'-->
+            <button id="mapServerScriptService.openEditor"><img src="Icons/EditorIcon.svg"></button>
+            <!--[SERVER/LOCAL] Start 'mapServerScriptService'-->
+            <button id="mapServerScriptService.Start"><img src="Icons/StartIcon.svg"></button>
+            <!--[SERVER/LOCAL] Saves The Editor Code Of The 'mapServerScriptService'-->
+            <button id="mapServerScriptService.Save"><img src="Icons/LoadScriptIcon.svg"></button>
+        </div>
+    </div>
+  </div>
+  <!--[CLIENT/LOCAL] Container Of The Server-->
+  <div id="editorLayout">
+    <!--[CLIENT/LOCAL] Editor For Scripting-->
+    <div id="editorContainer"></div>
+    <!--[PROYECTOR] View Game Frame-->
+    <canvas id="game"></canvas>
+    <!--[CLIENT] Workspace-->
+    <div id="workspace">
+    </div>
+  </div>
+  <!--[FUNDAMENTAL] Main Script Of The Application-->
+  <script type="module">import "./mapEditorService.js";window.startApp();</script>
+</body>
+</html>

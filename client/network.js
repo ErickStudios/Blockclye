@@ -57,7 +57,7 @@ export function connect(serverId) {
 }
 
 export function sendInput(input) {
-    if (!socket) return;
+    if (!socket || socket.readyState !== WebSocket.OPEN) return;
 
     socket.send(JSON.stringify({
         type: "input",
@@ -66,7 +66,7 @@ export function sendInput(input) {
 }
 
 export function sendEvent(event) {
-    if (!socket) return;
+    if (!socket || socket.readyState !== WebSocket.OPEN) return;
 
     socket.send(JSON.stringify({
         type: "event",

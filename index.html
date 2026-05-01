@@ -4,6 +4,135 @@
     <meta charset="UTF-8">
     <title>Blockclye</title>
     <style>
+        * {
+        margin: 0; padding: 0;
+        box-sizing: border-box;
+        font-family: "Segoe UI", sans-serif;
+        }
+        body {
+        background-color: #1e1e1e;
+        color: #d4d4d4;
+        overflow: hidden; 
+        touch-action: none;
+
+        }
+        #editorContainer {
+        width: 85%;
+        height: 100vh;
+        display: none;
+        }
+        #editorLayout {
+        display: flex;
+        width: 100vw;
+        height: calc(100vh - 52px); /* mismo alto que ya usabas */
+        }
+
+        #game {
+        flex: 1;
+        width: 85%;
+        height: 100%;
+        display: block;
+        background: #222223;
+        }
+
+        #workspace {
+        width: 15%;
+        background: #1b1b1c;
+        border-left: 1px solid #333;
+        overflow-y: auto;
+        overflow-x: auto;
+        padding: 8px;
+        white-space: nowrap;
+        }
+
+        #workspace > * {
+        min-width: 10;
+        }
+
+        /* items del workspace */
+        .workspace-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 1px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 10px;
+        }
+
+        .workspace-item:hover {
+        background: #2a2d2e;
+        }
+
+        .workspace-item.selected {
+        background: #094771;
+        }
+
+        .workspace-item img {
+        width: 9px;
+        height: 9px;
+        }
+        p {
+            color: #d4d4d4;
+        }
+        #ui {
+        width: calc(100%);
+        background: #252526;
+        padding: 10px;
+        display: flex;
+        gap: 8px;
+        }
+        .panel {
+        background: #29292A;
+        }
+        .panel p {
+        margin-top: 1em;
+        margin-bottom: 1em;
+        margin: 0px;
+        padding-bottom: 0px;
+        }
+        img {
+        padding-bottom: 1px;
+        }
+        button {
+        background: #3c3c3c;
+        border: none;
+        padding: 2px;
+        padding-left: 5px;
+        padding-right: 5px;
+        padding-top: 6px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: 0.15s;
+        }
+        button:hover {
+        background: #505050;
+        }
+        button:active {
+        background: #007acc;
+        }
+        button img {
+        width: 13px;
+        height: 13px;
+        padding-bottom: 0px;
+        }
+        button p {
+        font-size: 10px;
+        padding-top: 0px;
+        }
+        .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 50px;
+        height: 100%;
+        background: #333333;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 10px;
+        gap: 10px;
+        }
         body {
             text-align: center;
             background: #1e1e1e;
@@ -30,7 +159,6 @@
             border-radius: 8px;
         }
     </style>
-    <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
@@ -39,7 +167,7 @@
         <!--[LOCAL] Image Of The Logo Of Blockclye-->
         <div style="display: flex;">
             <!--[LOCAL] Image Of The Blocks-->
-            <img src="Icons/logo/BlockclyeIconNoText.svg" width="20px" , height="20px"
+            <img src="logo.svg" width="20px" , height="20px"
                 style="left: 50%; right: 50%;"></img>
             <!--[LOCAL] Text That Puts The Name Of The App-->
             <p style="color: azure; font-family: sans-serif;margin: 0; padding: 0;">Blockclye</p>
@@ -64,30 +192,9 @@
     <!--[LOCAL] The Divition Of The Buttons-->
     <div class="container">
         <!--[LOCAL] Go To The Map Maker, The 'mapEditorService'-->
-        <a href="mapEditorService.html" class="btn">mapEditorService</a>
+        <a href="./editor/mapEditorService.html" class="btn">mapEditorService</a>
         <!--[LOCAL] Go To The Player Client App, The 'clientService'-->
-        <a href="clientService.html" class="btn">clientService</a>
-    </div>
-    <!--[LOCAL] Insitation-->
-    <h2>You Want To Put Online Your Server In Local Lan?</h2>
-    <!--[LOCAL] Insitation-->
-    <div class="container">
-        <p style="padding: 5px 10px;">Put Your Server Online Now!</p>
-        <input hidden type="file" id="fileInputServer">
-        <script type="module">
-            const input = document.getElementById('fileInputServer');
-
-            input.onchange = async () => {
-            const file = input.files[0];
-            if (!file) return;
-
-            const content = await file.text();
-            console.log("abc")
-            window.blockclye.initServer(content);
-            };
-        </script>
-        <!--[LOCAL] Up Your Server-->
-        <button href="mapEditorService.html" class="btn" onclick="document.getElementById('fileInputServer').click()">serverOrLocalServiceCreator</button>
+        <a href="./client/clientService.html" class="btn">clientService</a>
     </div>
 </body>
 
